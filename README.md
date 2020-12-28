@@ -72,6 +72,31 @@ Given the hashes should be distributed evenly there is no reason to implement "o
 The selection of the index size ("20 bits") is more an optimization to compact common prefixes across many entries and to get away with linear search.
 If the database grows a lot more the index size can be increased to 24 bits (the implementation rejects larger indices, as memory usage will grow to store it: 24 bits already requires 128M); afterwards binary / interpolation search needs to be implemented.
 
+## Index file format
+
+The file starts with a short header:
+
+- UTF-8 line: `hash-index-v0`
+- UTF-8 line: the content type (i.e. type of indexed data). `SHA-1` or `NTLM` for this application.
+- UTF-8 line: free-form description of the data / data source
+- all of the above lines are terminated by the (first) `\n`
+- key size in bytes (as single byte); must not be zero
+- payload size in bytes (as single byte); can be zero
+
+The complete header must be at most 4096 bytes big.
+
+Now the buckets (i.e. their entries) follow; technically they could be anywhere in the file, and there can be unused parts in the file (but there can't be any space between buckets).
+
+The location of the buckets is described in the "table"; the `DEFLATE`-compressed table size is stored as big-endian unsigned 32-bit number in the last 4 bytes of the index. The (compressed) table itself is stored directly before that.
+
+The uncompressed table contains:
+- the table "depth": a single byte, describing the length of the bitstring prefix to use as index (i.e. in bits, not in bytes!)
+  - must not exceed 24 (otherwise table gets rather large)
+  - could be zero - resulting in a single bucket
+- for each bucket (2^depth+1) the file offset (big-endian unsigned 64-bit number) where its entries start
+  - the following entry is the file offset where the entries end; that is why an additional entry at the end is included to mark the end of the last bucket.
+- must not contain any other data
+
 ## File size
 
 The original text file uses hexadecimal representation of the hashes; the 7z compression will mostly undo that (i.e. use about half the number of bytes to store the hash as binary); it should also be able to compress shared prefixes for sequential entries.
