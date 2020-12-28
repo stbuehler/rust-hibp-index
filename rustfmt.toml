@@ -1,0 +1,7 @@
+# Use tab characters for indentation, spaces for alignment
+hard_tabs = true
+
+# Put a trailing comma after a block based match arm (non-block arms are not affected)
+match_block_trailing_comma = true
+
+use_small_heuristics = "Max"
