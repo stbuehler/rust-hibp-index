@@ -12,6 +12,12 @@ impl SHA1 {
 		this.0.copy_from_slice(hash.as_ref());
 		this
 	}
+
+	pub fn hex(&self) -> impl Deref<Target = str> {
+		let mut hex = SHA1Hex([0u8; 40]);
+		hex::encode_to_slice(&self.0, &mut hex.0).unwrap();
+		hex
+	}
 }
 
 impl FromStr for SHA1 {
@@ -38,24 +44,6 @@ impl DerefMut for SHA1 {
 	}
 }
 
-struct SHA1Hex([u8; 40]);
-
-impl Deref for SHA1Hex {
-	type Target = str;
-
-	fn deref(&self) -> &Self::Target {
-		std::str::from_utf8(&self.0).unwrap()
-	}
-}
-
-impl SHA1 {
-	pub fn hex(&self) -> impl Deref<Target = str> {
-		let mut hex = SHA1Hex([0u8; 40]);
-		hex::encode_to_slice(&self.0, &mut hex.0).unwrap();
-		hex
-	}
-}
-
 impl fmt::Debug for SHA1 {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		f.write_str(&self.hex())
@@ -65,5 +53,15 @@ impl fmt::Debug for SHA1 {
 impl fmt::Display for SHA1 {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		f.write_str(&self.hex())
+	}
+}
+
+struct SHA1Hex([u8; 40]);
+
+impl Deref for SHA1Hex {
+	type Target = str;
+
+	fn deref(&self) -> &Self::Target {
+		std::str::from_utf8(&self.0).unwrap()
 	}
 }
