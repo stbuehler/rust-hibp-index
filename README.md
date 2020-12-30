@@ -16,9 +16,10 @@ Then build the index `hibp-sha1.index`:
 
 Unless the upstream data changed this should result in the following files (only `hibp-sha1.index` is required for `hibp-lookup`):
 
-    10789612 hibp-sha1.index
-    11526460 pwned-passwords-sha1-ordered-by-hash-v7.7z
-    26404944 pwned-passwords-sha1-ordered-by-hash-v7.txt
+    $ stat -c '%12s %n' *sha1*
+     11048552093 hibp-sha1.index
+     11803081225 pwned-passwords-sha1-ordered-by-hash-v7.7z
+     27038651229 pwned-passwords-sha1-ordered-by-hash-v7.txt
 
 So the index is even smaller than the compressed download!
 
@@ -36,9 +37,10 @@ Then build the index `hibp-ntlm.index`:
 
 Unless the upstream data changed this should result in the following files (only `hibp-ntlm.index` is required for `hibp-lookup`)::
 
-     8392760 hibp-ntlm.index
-     8960884 pwned-passwords-ntlm-ordered-by-hash-v7.7z
-    21611316 pwned-passwords-ntlm-ordered-by-hash-v7.txt
+    $ stat -c '%12s %n' *ntlm*
+      8594181042 hibp-ntlm.index
+      9175932407 pwned-passwords-ntlm-ordered-by-hash-v7.7z
+     22129977261 pwned-passwords-ntlm-ordered-by-hash-v7.txt
 
 ## Use
 
