@@ -5,7 +5,7 @@ use hibp_index::sha1::SHA1;
 use hibp_index::ntlm::NTLM;
 
 use std::fs;
-use std::io::{self, BufRead, BufReader};
+use std::io::{self, BufRead};
 use std::path::Path;
 
 struct AppConfig {
@@ -71,8 +71,8 @@ fn app() -> anyhow::Result<AppConfig> {
 	Ok(cfg)
 }
 
-fn open_index(path: &Path, content_type: &ContentType, key_size: u8) -> anyhow::Result<Index<BufReader<fs::File>>> {
-	let index = Index::open(BufReader::new(fs::File::open(path)?))?;
+fn open_index(path: &Path, content_type: &ContentType, key_size: u8) -> anyhow::Result<Index<fs::File>> {
+	let index = Index::open(fs::File::open(path)?)?;
 	if index.content_type() != content_type {
 		anyhow::bail!("{:?} uses invalid content type: {:?}, expected {:?}", path, index.content_type(), content_type);
 	}
@@ -82,10 +82,9 @@ fn open_index(path: &Path, content_type: &ContentType, key_size: u8) -> anyhow::
 	Ok(index)
 }
 
-fn check<K, R>(cfg: &AppConfig, index: &mut Index<R>, hash: &K) -> anyhow::Result<()>
+fn check<K>(cfg: &AppConfig, index: &Index<fs::File>, hash: &K) -> anyhow::Result<()>
 where
 	K: std::fmt::Display + std::ops::Deref<Target=[u8]>,
-	R: io::Seek + io::BufRead,
 {
 	let is_present = index.lookup(&hash, &mut [])?.is_some();
 	if cfg.one_shot {
@@ -136,15 +135,15 @@ impl Input {
 
 fn main() -> anyhow::Result<()> {
 	let cfg = app()?;
-	let mut sha1_index = if cfg.load_sha1 { Some(open_index(cfg.sha1_index, &ContentType::SHA1, 20)?) } else { None };
-	let mut ntlm_index = if cfg.load_ntlm { Some(open_index(cfg.ntlm_index, &ContentType::NTLM, 16)?) } else { None };
+	let sha1_index = if cfg.load_sha1 { Some(open_index(cfg.sha1_index, &ContentType::SHA1, 20)?) } else { None };
+	let ntlm_index = if cfg.load_ntlm { Some(open_index(cfg.ntlm_index, &ContentType::NTLM, 16)?) } else { None };
 	for line in io::stdin().lock().lines() {
 		match Input::new(&cfg, line?)? {
 			Input::SHA1(sha1) => {
-				check(&cfg, sha1_index.as_mut().expect("SHA1 index required"), &sha1)?;
+				check(&cfg, sha1_index.as_ref().expect("SHA1 index required"), &sha1)?;
 			},
 			Input::NTLM(ntlm) => {
-				check(&cfg, ntlm_index.as_mut().expect("SHA1 index required"), &ntlm)?;
+				check(&cfg, ntlm_index.as_ref().expect("SHA1 index required"), &ntlm)?;
 			},
 		}
 	}

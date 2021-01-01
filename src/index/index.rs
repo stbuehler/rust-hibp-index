@@ -1,6 +1,8 @@
 use byteorder::ReadBytesExt;
 use std::convert::TryFrom;
-use std::io::{self, BufRead, Read};
+use std::io::{self, BufRead, Read, Seek};
+
+use crate::buf_read::{BufReader, ReadAt, FileLen};
 
 use super::{
 	table::{Table, TableReadError},
@@ -21,7 +23,7 @@ pub struct Index<R> {
 
 impl<R> Index<R>
 where
-	R: io::Read + io::Seek + io::BufRead,
+	R: io::Read + io::Seek + ReadAt + FileLen,
 {
 	pub fn content_type(&self) -> &ContentType {
 		&self.content_type
@@ -40,8 +42,9 @@ where
 	}
 
 	pub fn open(mut database: R) -> Result<Self, IndexOpenError> {
-		database.seek(io::SeekFrom::Start(0))?;
-		let mut header = database.by_ref().take(INDEX_V0_HEADER_LIMIT);
+		let mut reader = io::BufReader::new(&mut database);
+		reader.seek(io::SeekFrom::Start(0))?;
+		let mut header = reader.by_ref().take(INDEX_V0_HEADER_LIMIT);
 		let mut magic = String::new();
 		let mut content_type = String::new();
 		let mut description = String::new();
@@ -61,18 +64,19 @@ where
 		let key_size = header.read_u8()?;
 		let payload_size = header.read_u8()?;
 		drop(header);
-		let table = Table::read(database.by_ref())?;
+		let table = Table::read(reader.by_ref())?;
 		if key_size == 0 {
 			return Err(IndexOpenError::InvalidKeyLength);
 		}
 		if (table.depth() as u32 + 7) / 8 > key_size as u32 {
 			return Err(IndexOpenError::InvalidKeyLength);
 		}
+		drop(reader);
 		Ok(Self { content_type, description, key_size, payload_size, table, database })
 	}
 
 	pub fn lookup<'a>(
-		&mut self,
+		&self,
 		key: &[u8],
 		payload: &'a mut [u8],
 	) -> Result<Option<&'a mut [u8]>, LookupError> {
@@ -86,12 +90,13 @@ where
 			return Err(LookupError::InvalidSegmentLength);
 		}
 		let num_entries = length / entry_size as u64;
-		self.database.seek(io::SeekFrom::Start(start))?;
+		let mut database = BufReader::new(&self.database, 16);
+		database.seek(io::SeekFrom::Start(start))?;
 		let mut entry_buf = Vec::new();
 		entry_buf.resize(needle.len() + self.payload_size as usize, 0u8);
 		for _ in 0..num_entries {
 			// read (partial) key with payload in one operation
-			self.database.read_exact(&mut entry_buf)?;
+			database.read_exact(&mut entry_buf)?;
 			let db_key = &entry_buf[..needle.len()];
 			if db_key == needle {
 				let p_len = std::cmp::min(payload.len(), self.payload_size as usize);
