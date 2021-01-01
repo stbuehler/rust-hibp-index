@@ -7,9 +7,10 @@ pub struct SHA1(pub [u8; 20]);
 
 impl SHA1 {
 	pub fn hash(data: &[u8]) -> Self {
+		use sha1::Digest;
+		let dig = sha1::Sha1::digest(data);
 		let mut this = Self([0u8; 20]);
-		let hash = ring::digest::digest(&ring::digest::SHA1_FOR_LEGACY_USE_ONLY, data);
-		this.0.copy_from_slice(hash.as_ref());
+		this.0.copy_from_slice(&dig);
 		this
 	}
 
