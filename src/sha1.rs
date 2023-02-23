@@ -16,6 +16,9 @@ impl SHA1 {
 
 	pub fn hex(&self) -> impl Deref<Target = str> {
 		let mut hex = SHA1Hex([0u8; 40]);
+		#[allow(clippy::needless_borrow)]
+		// false positive - not needless: the borrowed expression implements the required traits
+		// still prefer to pass a reference to the array, not a copy of the array!
 		hex::encode_to_slice(&self.0, &mut hex.0).unwrap();
 		hex
 	}

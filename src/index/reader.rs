@@ -43,7 +43,7 @@ where
 
 	pub fn open(mut database: R) -> Result<Self, IndexOpenError> {
 		let mut reader = io::BufReader::new(&mut database);
-		reader.seek(io::SeekFrom::Start(0))?;
+		reader.rewind()?;
 		let mut header = reader.by_ref().take(INDEX_V0_HEADER_LIMIT);
 		let mut magic = String::new();
 		let mut content_type = String::new();
@@ -63,7 +63,8 @@ where
 		let content_type = ContentType::try_from(content_type)?;
 		let key_size = header.read_u8()?;
 		let payload_size = header.read_u8()?;
-		drop(header);
+		#[allow(clippy::drop_non_drop)]
+		drop(header); // must be done with header parsing here
 		let table = Table::read(reader.by_ref())?;
 		if key_size == 0 {
 			return Err(IndexOpenError::InvalidKeyLength);

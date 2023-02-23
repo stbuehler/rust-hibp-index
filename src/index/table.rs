@@ -107,7 +107,7 @@ impl TableBuilder {
 		}
 		let target_size = index + 1;
 		if target_size != self.table.file_offsets.len() {
-			let pos = database.seek(io::SeekFrom::Current(0))?;
+			let pos = database.stream_position()?;
 			self.table.file_offsets.resize(index + 1, pos);
 		}
 		self.current_index = Some(index);
@@ -144,7 +144,7 @@ impl TableBuilder {
 	}
 
 	pub fn close<W: io::Write + io::Seek>(&mut self, database: &mut W) -> io::Result<()> {
-		let table_start = database.seek(io::SeekFrom::Current(0))?;
+		let table_start = database.stream_position()?;
 		let entries = (1 << self.table.depth) + 1;
 		self.table.file_offsets.resize(entries, table_start);
 		let mut tbl_writer =
@@ -155,7 +155,7 @@ impl TableBuilder {
 		}
 		tbl_writer.flush()?;
 		drop(tbl_writer);
-		let table_size = database.seek(io::SeekFrom::Current(0))? - table_start;
+		let table_size = database.stream_position()? - table_start;
 		// due to limited table depth this shouldn't exceed u32 ever.
 		assert!(table_size < (u32::MAX as u64));
 		database.write_u32::<BE>(table_size as u32)?;

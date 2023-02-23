@@ -86,7 +86,7 @@ fn check<K>(cfg: &AppConfig, index: &Index<fs::File>, hash: &K) -> anyhow::Resul
 where
 	K: std::fmt::Display + std::ops::Deref<Target=[u8]>,
 {
-	let is_present = index.lookup(&hash, &mut [])?.is_some();
+	let is_present = index.lookup(hash, &mut [])?.is_some();
 	if cfg.one_shot {
 		std::process::exit(if is_present { 1 } else { 0 });
 	}
@@ -98,6 +98,7 @@ where
 	Ok(())
 }
 
+#[allow(clippy::upper_case_acronyms)]
 enum Input {
 	SHA1(SHA1),
 	NTLM(NTLM),

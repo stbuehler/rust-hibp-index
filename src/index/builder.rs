@@ -1,5 +1,5 @@
 use super::{
-	index::{INDEX_V0_HEADER_LIMIT, INDEX_V0_MAGIC},
+	reader::{INDEX_V0_HEADER_LIMIT, INDEX_V0_MAGIC},
 	table::{TableBuilder, TABLE_MAX_DEPTH},
 	ContentType,
 };
@@ -25,7 +25,7 @@ where
 		payload_size: u8,
 		depth: u8,
 	) -> Result<Self, BuilderCreateError> {
-		let start = database.seek(io::SeekFrom::Current(0))?;
+		let start = database.stream_position()?;
 		if key_size == 0 {
 			return Err(BuilderCreateError::InvalidKeyLength);
 		}
@@ -48,7 +48,7 @@ where
 		database.write_all(b"\n")?;
 		database.write_u8(key_size)?;
 		database.write_u8(payload_size)?;
-		let header_end = database.seek(io::SeekFrom::Current(0))?;
+		let header_end = database.stream_position()?;
 		let header_size = header_end - start;
 		if header_size > INDEX_V0_HEADER_LIMIT {
 			return Err(BuilderCreateError::HeaderTooBig);

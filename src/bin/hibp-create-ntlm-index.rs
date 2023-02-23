@@ -14,7 +14,7 @@ fn main() -> anyhow::Result<()> {
 	let mut builder = Builder::create(output, ContentType::NTLM, "pwned-passwords v7", 16, 0, 20)?;
 	for line in input.lines() {
 		let line = line?;
-		if let Some(colon) = line.find(":") {
+		if let Some(colon) = line.find(':') {
 			let ntlm = line[..colon].parse::<NTLM>()?;
 			builder.add_entry(&ntlm, b"")?;
 		} else if !line.is_empty() {

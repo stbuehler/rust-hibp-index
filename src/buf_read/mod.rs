@@ -28,7 +28,7 @@ impl<'a, R: ReadAt> BufReader<'a, R> {
 		let page = self.position >> PAGE_SIZE_BITS;
 		let page_offset = page << PAGE_SIZE_BITS;
 		let offset = (self.position - page_offset) as usize;
-		if !self.cache.cache_get(&page).is_some() {
+		if self.cache.cache_get(&page).is_none() {
 			let mut buf = Vec::new();
 
 			buf.resize(PAGE_SIZE, 0);
