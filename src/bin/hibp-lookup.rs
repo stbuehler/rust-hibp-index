@@ -20,39 +20,55 @@ struct AppConfig {
 }
 
 fn app() -> anyhow::Result<AppConfig> {
-	// clap not edition 2018 yet, need to import clap macros so they can
-	// be used by other clap macros
-	use clap::{
-		clap_app,
-		crate_name,
-		crate_version,
-		crate_authors,
-		crate_description,
-	};
-	let matches = clap_app!(
-		@app (clap::app_from_crate!(", "))
-		(@arg SHA1: --sha1 "Load SHA-1 index; disable auto-loading NTLM index")
-		(@arg NTLM: --ntlm "Load NTLM index; disable auto-loading SHA-1 index")
-		(@arg ONESHOT: --oneshot "Only test single password; exit code 0 signals password is fine (not included in index)")
-		(@arg PLAINTEXT: --plaintext "Treat every input line as plaintext password")
-		(@arg NO_PLAINTEXT: long("no-plaintext") conflicts_with("PLAINTEXT") "Every input line must be a hash (either SHA-1 or NTLM)")
-		(@setting ColoredHelp)
-	).get_matches();
+	#[derive(clap::Parser)]
+	#[command(author, version)]
+	#[command(help_template("\
+{before-help}{name} {version}
+{author-with-newline}{about-with-newline}
+{usage-heading} {usage}
+
+{all-args}{after-help}
+"))]
+	/// Tool to lookup SHA-1/NTLM hashes in index database
+	struct Cli {
+		#[arg(long)]
+		/// Load SHA-1 index; disable auto-loading NTLM index
+		sha1: bool,
+
+		#[arg(long)]
+		/// Load NTLM index; disable auto-loading SHA-1 index
+		ntlm: bool,
+
+		#[arg(long)]
+		/// Only test single password; exit code 0 signals password is fine (not included in index)
+		oneshot: bool,
+
+		#[arg(long)]
+		/// Treat every input line as plaintext password
+		plaintext: bool,
+
+		#[arg(long = "no-plaintext", conflicts_with("plaintext"))]
+		/// Every input line must be a hash (either SHA-1 or NTLM)
+		no_plaintext: bool,
+	}
+
+	let cli = <Cli as clap::Parser>::parse();
+
 	let mut cfg = AppConfig {
 		auto_load: true,
 		load_sha1: false,
 		sha1_index: Path::new("hibp-sha1.index"),
 		load_ntlm: false,
 		ntlm_index: Path::new("hibp-ntlm.index"),
-		one_shot: matches.is_present("ONESHOT"),
-		plaintext: matches.is_present("PLAINTEXT"),
-		no_plaintext: matches.is_present("NO_PLAINTEXT"),
+		one_shot: cli.oneshot,
+		plaintext: cli.plaintext,
+		no_plaintext: cli.no_plaintext,
 	};
-	if matches.is_present("SHA1") {
+	if cli.sha1 {
 		cfg.auto_load = false;
 		cfg.load_sha1 = true;
 	}
-	if matches.is_present("NTLM") {
+	if cli.ntlm {
 		cfg.auto_load = false;
 		cfg.load_ntlm = true;
 	}
