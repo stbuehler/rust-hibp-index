@@ -1,7 +1,7 @@
 [package]
 name = "hibp-index"
 version = "0.1.0"
-authors = ["Stefan Bühler <stbuehler@web.de>"]
+authors = ["Stefan Bühler <source@stbuehler.de>"]
 edition = "2021"
 
 [profile.release]
