@@ -22,8 +22,8 @@ pub trait ReadAt {
 					buf = &mut tmp[n..];
 					offset += n as u64;
 					total += n;
-				}
-				Err(ref e) if e.kind() == io::ErrorKind::Interrupted => {}
+				},
+				Err(ref e) if e.kind() == io::ErrorKind::Interrupted => {},
 				Err(e) => return Err(e),
 			}
 		}

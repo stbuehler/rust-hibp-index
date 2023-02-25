@@ -1,8 +1,8 @@
 extern crate hibp_index;
 
 use hibp_index::index::{ContentType, Index};
-use hibp_index::sha1::SHA1;
 use hibp_index::ntlm::NTLM;
+use hibp_index::sha1::SHA1;
 
 use std::fs;
 use std::io::{self, BufRead};
@@ -22,13 +22,15 @@ struct AppConfig {
 fn app() -> anyhow::Result<AppConfig> {
 	#[derive(clap::Parser)]
 	#[command(author, version)]
-	#[command(help_template("\
+	#[command(help_template(
+		"\
 {before-help}{name} {version}
 {author-with-newline}{about-with-newline}
 {usage-heading} {usage}
 
 {all-args}{after-help}
-"))]
+"
+	))]
 	/// Tool to lookup SHA-1/NTLM hashes in index database
 	struct Cli {
 		#[arg(long)]
@@ -87,20 +89,34 @@ fn app() -> anyhow::Result<AppConfig> {
 	Ok(cfg)
 }
 
-fn open_index(path: &Path, content_type: &ContentType, key_size: u8) -> anyhow::Result<Index<fs::File>> {
+fn open_index(
+	path: &Path,
+	content_type: &ContentType,
+	key_size: u8,
+) -> anyhow::Result<Index<fs::File>> {
 	let index = Index::open(fs::File::open(path)?)?;
 	if index.content_type() != content_type {
-		anyhow::bail!("{:?} uses invalid content type: {:?}, expected {:?}", path, index.content_type(), content_type);
+		anyhow::bail!(
+			"{:?} uses invalid content type: {:?}, expected {:?}",
+			path,
+			index.content_type(),
+			content_type
+		);
 	}
 	if index.key_size() != key_size {
-		anyhow::bail!("{:?} uses invalid key size: {:?}, expected {:?}", path, index.key_size(), key_size);
+		anyhow::bail!(
+			"{:?} uses invalid key size: {:?}, expected {:?}",
+			path,
+			index.key_size(),
+			key_size
+		);
 	}
 	Ok(index)
 }
 
 fn check<K>(cfg: &AppConfig, index: &Index<fs::File>, hash: &K) -> anyhow::Result<()>
 where
-	K: std::fmt::Display + std::ops::Deref<Target=[u8]>,
+	K: std::fmt::Display + std::ops::Deref<Target = [u8]>,
 {
 	let is_present = index.lookup(hash, &mut [])?.is_some();
 	if cfg.one_shot {
@@ -152,8 +168,16 @@ impl Input {
 
 fn main() -> anyhow::Result<()> {
 	let cfg = app()?;
-	let sha1_index = if cfg.load_sha1 { Some(open_index(cfg.sha1_index, &ContentType::SHA1, 20)?) } else { None };
-	let ntlm_index = if cfg.load_ntlm { Some(open_index(cfg.ntlm_index, &ContentType::NTLM, 16)?) } else { None };
+	let sha1_index = if cfg.load_sha1 {
+		Some(open_index(cfg.sha1_index, &ContentType::SHA1, 20)?)
+	} else {
+		None
+	};
+	let ntlm_index = if cfg.load_ntlm {
+		Some(open_index(cfg.ntlm_index, &ContentType::NTLM, 16)?)
+	} else {
+		None
+	};
 	for line in io::stdin().lock().lines() {
 		match Input::new(&cfg, line?)? {
 			Input::SHA1(sha1) => {

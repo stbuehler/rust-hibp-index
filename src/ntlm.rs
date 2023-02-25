@@ -1,4 +1,4 @@
-use byteorder::{LE, WriteBytesExt};
+use byteorder::{WriteBytesExt, LE};
 use std::fmt;
 use std::ops::{Deref, DerefMut};
 use std::str::FromStr;
@@ -80,4 +80,3 @@ impl Deref for NTLMHex {
 		std::str::from_utf8(&self.0).unwrap()
 	}
 }
-

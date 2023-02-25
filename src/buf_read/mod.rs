@@ -1,6 +1,6 @@
 mod read_at;
 
-pub use self::read_at::{ReadAt, FileLen};
+pub use self::read_at::{FileLen, ReadAt};
 
 use cached::{Cached, SizedCache};
 use std::io;
@@ -17,11 +17,7 @@ pub struct BufReader<'a, R> {
 impl<'a, R: ReadAt> BufReader<'a, R> {
 	pub fn new(reader: &'a R, cache_capacity: usize) -> Self {
 		let cache = SizedCache::with_size(cache_capacity);
-		Self {
-			cache,
-			position: 0,
-			reader,
-		}
+		Self { cache, position: 0, reader }
 	}
 
 	fn load_page(&mut self) -> io::Result<&[u8]> {
@@ -67,10 +63,14 @@ impl<R: ReadAt + FileLen> io::Seek for BufReader<'_, R> {
 			},
 			io::SeekFrom::Current(offset) => {
 				if offset >= 0 {
-					self.position = checked_opt(self.position.checked_add(offset as u64), "position overflow")?;
+					self.position =
+						checked_opt(self.position.checked_add(offset as u64), "position overflow")?;
 				} else {
 					let offset = offset.checked_abs().expect("negative offset overflow");
-					self.position = checked_opt(self.position.checked_sub(offset as u64), "position (negative) overflow")?;
+					self.position = checked_opt(
+						self.position.checked_sub(offset as u64),
+						"position (negative) overflow",
+					)?;
 				}
 			},
 			io::SeekFrom::End(offset) => {

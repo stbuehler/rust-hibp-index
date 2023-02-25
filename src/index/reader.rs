@@ -2,7 +2,7 @@ use byteorder::ReadBytesExt;
 use std::convert::TryFrom;
 use std::io::{self, BufRead, Read, Seek};
 
-use crate::buf_read::{BufReader, ReadAt, FileLen};
+use crate::buf_read::{BufReader, FileLen, ReadAt};
 
 use super::{
 	table::{Table, TableReadError},
