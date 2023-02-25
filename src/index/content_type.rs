@@ -44,7 +44,9 @@ impl std::ops::Deref for KnownContentType {
 	}
 }
 
-pub trait ContentTypeData: AsRef<[u8]> + AsMut<[u8]> {
+pub trait ContentTypeData:
+	AsRef<[u8]> + AsMut<[u8]> + std::fmt::Display + std::str::FromStr
+{
 	const CONTENT_TYPE: KnownContentType;
 }
 

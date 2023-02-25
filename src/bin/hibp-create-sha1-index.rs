@@ -13,13 +13,7 @@ fn main() -> anyhow::Result<()> {
 	);
 	let mut builder = TypedBuilder::<SHA1, _, 0>::create(output, "pwned-passwords v7", 20)?;
 	for line in input.lines() {
-		let line = line?;
-		if let Some(colon) = line.find(':') {
-			let sha1 = line[..colon].parse::<SHA1>()?;
-			builder.add_entry(&sha1, b"")?;
-		} else if !line.is_empty() {
-			panic!("Invalid input line: {:?}", line);
-		}
+		builder.add_entry_from_hibp_line(&line?)?;
 	}
 	builder.finish()?;
 	Ok(())

@@ -3,6 +3,7 @@ use super::{
 	table::{TableBuilder, TABLE_MAX_DEPTH},
 	ContentTypeData, KnownContentType,
 };
+use anyhow::Context;
 use byteorder::WriteBytesExt;
 use std::io;
 
@@ -113,5 +114,26 @@ where
 
 	pub fn finish(self) -> io::Result<()> {
 		self.builder.finish()
+	}
+}
+
+impl<D, W> TypedBuilder<D, W, 0>
+where
+	D: ContentTypeData,
+	<D as std::str::FromStr>::Err: std::error::Error + Sync + Send + 'static,
+	W: io::Write + io::Seek,
+{
+	// https://haveibeenpwned.com/API/v3#PwnedPasswords
+	// > The downloadable source data delimits the hash and the password count with a colon (:) and each line with a CRLF.
+	// we ignore the password count (empty payload to builder)
+	pub fn add_entry_from_hibp_line(&mut self, line: &str) -> anyhow::Result<()> {
+		if let Some(colon) = line.find(':') {
+			let hash =
+				line[..colon].parse::<D>().context("Failed to parse hash from HIBP source line")?;
+			self.add_entry(&hash, b"").context("Failed to add hash to index")?;
+		} else if !line.is_empty() {
+			anyhow::bail!("Invalid HIBP source line: {:?}", line);
+		}
+		Ok(())
 	}
 }
