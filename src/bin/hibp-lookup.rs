@@ -184,7 +184,7 @@ fn main() -> anyhow::Result<()> {
 				check(&cfg, sha1_index.as_ref().expect("SHA1 index required"), &sha1)?;
 			},
 			Input::NTLM(ntlm) => {
-				check(&cfg, ntlm_index.as_ref().expect("SHA1 index required"), &ntlm)?;
+				check(&cfg, ntlm_index.as_ref().expect("NTLM index required"), &ntlm)?;
 			},
 		}
 	}

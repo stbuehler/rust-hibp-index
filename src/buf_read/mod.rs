@@ -20,6 +20,11 @@ impl<'a, R: ReadAt> BufReader<'a, R> {
 		Self { cache, position: 0, reader }
 	}
 
+	// never fails
+	pub fn seek_from_start(&mut self, position: u64) {
+		self.position = position;
+	}
+
 	fn load_page(&mut self) -> io::Result<&[u8]> {
 		let page = self.position >> PAGE_SIZE_BITS;
 		let page_offset = page << PAGE_SIZE_BITS;

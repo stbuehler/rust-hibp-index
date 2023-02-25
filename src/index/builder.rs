@@ -1,6 +1,6 @@
 use super::{
 	reader::{INDEX_V0_HEADER_LIMIT, INDEX_V0_MAGIC},
-	table::{TableBuilder, TABLE_MAX_DEPTH},
+	table::{Depth, TableBuilder},
 	ContentTypeData, KnownContentType,
 };
 use anyhow::Context;
@@ -30,12 +30,13 @@ where
 		if key_size == 0 {
 			return Err(BuilderCreateError::InvalidKeyLength);
 		}
-		if depth > TABLE_MAX_DEPTH {
+		if (depth / 8) + 1 > key_size {
+			// builder code always splits key into (prefix, possibly_partial_byte, suffix)
+			// suffix can be empty, but always need at least one byte after the prefix
+			// (implementation detail, not needed by design; but expect keys to be long anyway)
 			return Err(BuilderCreateError::InvalidKeyLength);
 		}
-		if (depth as u32 + 7) / 8 > key_size as u32 {
-			return Err(BuilderCreateError::InvalidKeyLength);
-		}
+		let depth = Depth::new(depth).ok_or(BuilderCreateError::InvalidKeyLength)?;
 		if description.contains('\n') {
 			return Err(BuilderCreateError::InvalidDescription {
 				description: description.to_string(),

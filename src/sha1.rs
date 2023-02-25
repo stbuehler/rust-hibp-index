@@ -2,7 +2,7 @@ use std::fmt;
 use std::ops::{Deref, DerefMut};
 use std::str::FromStr;
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct SHA1(pub [u8; 20]);
 
 impl SHA1 {

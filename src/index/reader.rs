@@ -5,7 +5,7 @@ use std::io::{self, BufRead, Read, Seek};
 use crate::buf_read::{BufReader, FileLen, ReadAt};
 
 use super::{
-	table::{Table, TableReadError},
+	table::{ForwardSearch, ForwardSearchResult, Table, TableReadError},
 	ContentType, ContentTypeParseError,
 };
 
@@ -65,11 +65,8 @@ where
 		let payload_size = header.read_u8()?;
 		#[allow(clippy::drop_non_drop)]
 		drop(header); // must be done with header parsing here
-		let table = Table::read(reader.by_ref())?;
-		if key_size == 0 {
-			return Err(IndexOpenError::InvalidKeyLength);
-		}
-		if (table.depth() as u32 + 7) / 8 > key_size as u32 {
+		let table = Table::open(reader.by_ref())?;
+		if !table.depth().valid_key_size(key_size) {
 			return Err(IndexOpenError::InvalidKeyLength);
 		}
 		drop(reader);
@@ -81,31 +78,71 @@ where
 		key: &[u8],
 		payload: &'a mut [u8],
 	) -> Result<Option<&'a mut [u8]>, LookupError> {
-		assert_ne!(self.key_size, 0);
-		assert_eq!(key.len(), self.key_size as usize);
-		let needle = self.table.mask(key);
-		let std::ops::Range { start, end } = self.table.lookup(key);
-		let length = end - start;
-		let entry_size = needle.len() + self.payload_size as usize;
-		if length % entry_size as u64 != 0 {
-			return Err(LookupError::InvalidSegmentLength);
-		}
-		let num_entries = length / entry_size as u64;
-		let mut database = BufReader::new(&self.database, 16);
-		database.seek(io::SeekFrom::Start(start))?;
+		IndexLookup::new(self, key).sync_lookup(payload)
+	}
+}
+
+struct IndexLookup<'r, 'key, R> {
+	database: BufReader<'r, R>,
+	entry_buf: Vec<u8>,
+	forward_search: ForwardSearch<'key>,
+	num_entries: u64,
+	err: Option<LookupError>,
+}
+
+impl<'r, 'key, R> IndexLookup<'r, 'key, R>
+where
+	R: io::Read + io::Seek + ReadAt + FileLen,
+{
+	fn new(index: &'r Index<R>, key: &'key [u8]) -> Self {
+		assert_ne!(index.key_size, 0);
+		assert_eq!(key.len(), index.key_size as usize);
+		let mut database = BufReader::new(&index.database, 16);
+
+		let forward_search  =index.table.depth().start_forward_search(key);
+
+		let entry_size = index.table.depth().entry_size(index.key_size, index.payload_size);
 		let mut entry_buf = Vec::new();
-		entry_buf.resize(needle.len() + self.payload_size as usize, 0u8);
-		for _ in 0..num_entries {
+		entry_buf.resize(entry_size, 0u8);
+
+		let std::ops::Range { start, end } = index.table.lookup(key);
+		database.seek_from_start(start);
+
+		let length = end - start;
+		let num_entries: u64;
+		let err: Option<LookupError>;
+		if length % entry_size as u64 != 0 {
+			num_entries = 0;
+			err = Some(LookupError::InvalidSegmentLength);
+		} else {
+			num_entries = length / entry_size as u64;
+			err = None
+		}
+
+		Self { database, entry_buf, forward_search, num_entries, err }
+	}
+}
+
+impl<R> IndexLookup<'_, '_, R>
+where
+	R: io::Read + io::Seek + ReadAt + FileLen,
+{
+	fn sync_lookup<'a>(&mut self, payload: &'a mut [u8]) -> Result<Option<&'a mut [u8]>, LookupError> {
+		if let Some(err) = self.err.take() {
+			return Err(err);
+		}
+		for _ in 0..self.num_entries {
 			// read (partial) key with payload in one operation
-			database.read_exact(&mut entry_buf)?;
-			let db_key = &entry_buf[..needle.len()];
-			if db_key == needle {
-				let p_len = std::cmp::min(payload.len(), self.payload_size as usize);
-				let payload = &mut payload[..p_len];
-				payload.copy_from_slice(&entry_buf[needle.len()..][..p_len]);
-				return Ok(Some(payload));
-			} else if db_key > needle.as_slice() {
-				break;
+			self.database.read_exact(&mut self.entry_buf)?;
+			match self.forward_search.test_entry(&self.entry_buf) {
+				ForwardSearchResult::Match(data) => {
+					let p_len = std::cmp::min(payload.len(), data.len());
+					let payload = &mut payload[..p_len];
+					payload.copy_from_slice(&data[..p_len]);
+					return Ok(Some(payload));
+				},
+				ForwardSearchResult::Continue => (),
+				ForwardSearchResult::Break => break,
 			}
 		}
 		Ok(None)
