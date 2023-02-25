@@ -1,6 +1,6 @@
 extern crate hibp_index;
 
-use hibp_index::index::{Builder, ContentType};
+use hibp_index::index::TypedBuilder;
 use hibp_index::sha1::SHA1;
 
 use std::fs;
@@ -11,7 +11,7 @@ fn main() -> anyhow::Result<()> {
 	let output = BufWriter::new(
 		fs::OpenOptions::new().write(true).create_new(true).open("hibp-sha1.index")?,
 	);
-	let mut builder = Builder::create(output, ContentType::SHA1, "pwned-passwords v7", 20, 0, 20)?;
+	let mut builder = TypedBuilder::<SHA1, _, 0>::create(output, "pwned-passwords v7", 20)?;
 	for line in input.lines() {
 		let line = line?;
 		if let Some(colon) = line.find(':') {

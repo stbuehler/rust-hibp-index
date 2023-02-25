@@ -4,7 +4,7 @@ mod reader;
 mod table;
 
 pub use self::{
-	builder::Builder,
-	content_type::{ContentType, ContentTypeParseError},
+	builder::{Builder, BuilderCreateError, TypedBuilder},
+	content_type::{ContentType, ContentTypeData, ContentTypeParseError, KnownContentType},
 	reader::{Index, IndexOpenError, LookupError},
 };

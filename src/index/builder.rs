@@ -1,7 +1,7 @@
 use super::{
 	reader::{INDEX_V0_HEADER_LIMIT, INDEX_V0_MAGIC},
 	table::{TableBuilder, TABLE_MAX_DEPTH},
-	ContentType,
+	ContentTypeData, KnownContentType,
 };
 use byteorder::WriteBytesExt;
 use std::io;
@@ -19,12 +19,12 @@ where
 {
 	pub fn create(
 		mut database: W,
-		content_type: ContentType,
+		content_type: KnownContentType,
 		description: &str,
-		key_size: u8,
 		payload_size: u8,
 		depth: u8,
 	) -> Result<Self, BuilderCreateError> {
+		let key_size = content_type.key_bytes_length();
 		let start = database.stream_position()?;
 		if key_size == 0 {
 			return Err(BuilderCreateError::InvalidKeyLength);
@@ -42,7 +42,7 @@ where
 		}
 		database.write_all(INDEX_V0_MAGIC.as_bytes())?;
 		database.write_all(b"\n")?;
-		database.write_all(content_type.as_bytes())?;
+		database.write_all(content_type.name().as_bytes())?;
 		database.write_all(b"\n")?;
 		database.write_all(description.as_bytes())?;
 		database.write_all(b"\n")?;
@@ -81,4 +81,37 @@ pub enum BuilderCreateError {
 	InvalidKeyLength,
 	#[error("Header too big")]
 	HeaderTooBig,
+}
+
+pub struct TypedBuilder<D, W, const PAYLOAD_SIZE: usize> {
+	builder: Builder<W>,
+	_marker: std::marker::PhantomData<D>,
+}
+
+impl<D, W, const PAYLOAD_SIZE: usize> TypedBuilder<D, W, PAYLOAD_SIZE>
+where
+	D: ContentTypeData,
+	W: io::Write + io::Seek,
+{
+	pub fn create(database: W, description: &str, depth: u8) -> Result<Self, BuilderCreateError> {
+		assert!(PAYLOAD_SIZE < 0x100);
+		Ok(Self {
+			builder: Builder::create(
+				database,
+				D::CONTENT_TYPE,
+				description,
+				PAYLOAD_SIZE as u8,
+				depth,
+			)?,
+			_marker: std::marker::PhantomData,
+		})
+	}
+
+	pub fn add_entry(&mut self, key: &D, payload: &[u8; PAYLOAD_SIZE]) -> io::Result<()> {
+		self.builder.add_entry(key.as_ref(), payload)
+	}
+
+	pub fn finish(self) -> io::Result<()> {
+		self.builder.finish()
+	}
 }

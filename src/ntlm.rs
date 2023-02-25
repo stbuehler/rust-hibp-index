@@ -59,6 +59,18 @@ impl DerefMut for NTLM {
 	}
 }
 
+impl AsRef<[u8]> for NTLM {
+	fn as_ref(&self) -> &[u8] {
+		&self.0
+	}
+}
+
+impl AsMut<[u8]> for NTLM {
+	fn as_mut(&mut self) -> &mut [u8] {
+		&mut self.0
+	}
+}
+
 impl fmt::Debug for NTLM {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		f.write_str(&self.hex())
@@ -69,6 +81,10 @@ impl fmt::Display for NTLM {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		f.write_str(&self.hex())
 	}
+}
+
+impl crate::index::ContentTypeData for NTLM {
+	const CONTENT_TYPE: crate::index::KnownContentType = crate::index::KnownContentType::NTLM;
 }
 
 struct NTLMHex([u8; 32]);

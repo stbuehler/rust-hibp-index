@@ -123,9 +123,9 @@ where
 		std::process::exit(if is_present { 1 } else { 0 });
 	}
 	if is_present {
-		println!("Found {}: {}", &**index.content_type(), hash);
+		println!("Found {}: {}", index.content_type().name(), hash);
 	} else {
-		println!("Not found {}: {}", &**index.content_type(), hash);
+		println!("Not found {}: {}", index.content_type().name(), hash);
 	}
 	Ok(())
 }
