@@ -4,6 +4,7 @@ use std::io::{self, BufRead, Read, Seek};
 
 use crate::buf_read::{BufReader, FileLen, ReadAt};
 
+use super::table::{ForwardRangeSearch, PrefixRange, Prefix};
 use super::{
 	table::{ForwardSearch, ForwardSearchResult, Table, TableReadError},
 	ContentType, ContentTypeParseError,
@@ -80,6 +81,23 @@ where
 	) -> Result<Option<&'a mut [u8]>, LookupError> {
 		IndexLookup::new(self, key).sync_lookup(payload)
 	}
+
+	pub fn lookup_range<'a>(
+		&'a self,
+		key: &'a [u8],
+		key_bits: u32,
+	) -> impl 'a + Iterator<Item=Result<Vec<u8>, LookupError>> {
+		let mut walk = IndexWalk::new(self, key, key_bits);
+		let mut key_buf = Vec::new();
+		key_buf.resize(self.key_size as usize, 0);
+		std::iter::from_fn(move || {
+			match walk.sync_walk(&mut key_buf) {
+				Ok(None) => None,
+				Ok(Some(_payload)) => Some(Ok(key_buf.clone())),
+				Err(e) => Some(Err(e)),
+			}
+		})
+	}
 }
 
 struct IndexLookup<'r, 'key, R> {
@@ -146,6 +164,82 @@ where
 			}
 		}
 		Ok(None)
+	}
+}
+
+struct IndexWalk<'r, 'key, R> {
+	index: &'r Index<R>,
+	database: BufReader<'r, R>,
+	forward_search: ForwardRangeSearch<'key>,
+	prefixes: PrefixRange,
+	payload_buf: Vec<u8>,
+	entry_size: usize,
+	current_prefix_num_entries: Option<(Prefix, u64)>,
+}
+
+impl<'r, 'key, R> IndexWalk<'r, 'key, R>
+where
+	R: io::Read + io::Seek + ReadAt + FileLen,
+{
+	fn new(index: &'r Index<R>, key: &'key [u8], key_bits: u32) -> Self {
+		assert_ne!(index.key_size, 0);
+
+		let database = BufReader::new(&index.database, 16);
+
+		let forward_search = ForwardRangeSearch::new(key, key_bits);
+		let prefixes = index.table.prefix_range(key, key_bits);
+
+		let mut payload_buf = Vec::new();
+		payload_buf.resize(index.payload_size as usize, 0u8);
+
+		let entry_size = index.table.depth().entry_size(index.key_size, index.payload_size);
+
+		Self { index, database, forward_search, prefixes, payload_buf, entry_size, current_prefix_num_entries: None }
+	}
+}
+
+impl<R> IndexWalk<'_, '_, R>
+where
+	R: io::Read + io::Seek + ReadAt + FileLen,
+{
+	fn sync_walk<'a>(&'a mut self, key: &mut [u8]) -> Result<Option<&'a mut [u8]>, LookupError> {
+		assert_eq!(key.len(), self.index.key_size as usize);
+
+		loop {
+			if let Some((prefix, mut num_entries)) = self.current_prefix_num_entries.take() {
+				while num_entries > 0 {
+					self.database.read_exact(key)?;
+					self.database.read_exact(&mut self.payload_buf)?;
+					num_entries -= 1;
+					prefix.fix_entry(key);
+					match self.forward_search.test_key(key) {
+						ForwardSearchResult::Match(_) => {
+							// remember state
+							self.current_prefix_num_entries = Some((prefix, num_entries));
+							return Ok(Some(&mut self.payload_buf));
+						},
+						ForwardSearchResult::Continue => (),
+						ForwardSearchResult::Break => return Ok(None),
+					}
+				}
+				// all entries in current prefix done
+			} else {
+				// currently no prefix active, load next one
+				let prefix = match self.prefixes.next() {
+					None => return Ok(None),
+					Some(prefix) => prefix,
+				};
+				let std::ops::Range { start, end } = self.index.table.lookup_prefix(prefix);
+				self.database.seek_from_start(start);
+
+				let length = end - start;
+				if length % self.entry_size as u64 != 0 {
+					return Err(LookupError::InvalidSegmentLength);
+				}
+				let num_entries = length / self.entry_size as u64;
+				self.current_prefix_num_entries = Some((prefix, num_entries));
+			}
+		}
 	}
 }
 

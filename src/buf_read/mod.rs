@@ -25,6 +25,10 @@ impl<'a, R: ReadAt> BufReader<'a, R> {
 		self.position = position;
 	}
 
+	pub fn tell(&mut self) -> u64 {
+		self.position
+	}
+
 	fn load_page(&mut self) -> io::Result<&[u8]> {
 		let page = self.position >> PAGE_SIZE_BITS;
 		let page_offset = page << PAGE_SIZE_BITS;
