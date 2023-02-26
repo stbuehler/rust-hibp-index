@@ -4,10 +4,10 @@ use std::io::{self, BufRead, Read, Seek};
 
 use crate::buf_read::{BufReader, FileLen, ReadAt};
 
-use super::table::{ForwardRangeSearch, Prefix, PrefixRange};
 use super::{
-	table::{ForwardSearch, ForwardSearchResult, Table, TableReadError},
-	ContentType, ContentTypeParseError,
+	table::{Table, TableReadError},
+	table_helper::{ForwardRangeSearch, ForwardSearch, ForwardSearchResult},
+	ContentType, ContentTypeParseError, Prefix, PrefixRange,
 };
 
 pub const INDEX_V0_MAGIC: &str = "hash-index-v0";
@@ -115,7 +115,7 @@ where
 		assert_eq!(key.len(), index.key_size as usize);
 		let mut database = BufReader::new(&index.database, 16);
 
-		let forward_search = index.table.depth().start_forward_search(key);
+		let forward_search = ForwardSearch::new(index.table.depth(), key);
 
 		let entry_size = index.table.depth().entry_size(index.key_size, index.payload_size);
 		let mut entry_buf = Vec::new();
@@ -220,7 +220,7 @@ where
 					self.database.read_exact(key)?;
 					self.database.read_exact(&mut self.payload_buf)?;
 					num_entries -= 1;
-					prefix.fix_entry(key);
+					prefix.set_key_prefix(key);
 					match self.forward_search.test_key(key) {
 						ForwardSearchResult::Match(_) => {
 							// remember state

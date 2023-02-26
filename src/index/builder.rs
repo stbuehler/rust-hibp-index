@@ -1,14 +1,14 @@
 use super::{
 	reader::{INDEX_V0_HEADER_LIMIT, INDEX_V0_MAGIC},
-	table::{Depth, TableBuilder},
-	ContentTypeData, KnownContentType,
+	table::TableBuilder,
+	ContentTypeData, Depth, KnownContentType,
 };
 use anyhow::Context;
 use byteorder::WriteBytesExt;
 use std::io;
 
 pub struct Builder<W> {
-	key_size: u8,
+	key_bytes: u8,
 	payload_size: u8,
 	table: TableBuilder,
 	database: W,
@@ -23,20 +23,13 @@ where
 		content_type: KnownContentType,
 		description: &str,
 		payload_size: u8,
-		depth: u8,
+		depth: Depth,
 	) -> Result<Self, BuilderCreateError> {
-		let key_size = content_type.key_bytes_length();
+		let key_bytes = content_type.key_bytes_length();
 		let start = database.stream_position()?;
-		if key_size == 0 {
+		if !depth.valid_key_size(key_bytes) {
 			return Err(BuilderCreateError::InvalidKeyLength);
 		}
-		if (depth / 8) + 1 > key_size {
-			// builder code always splits key into (prefix, possibly_partial_byte, suffix)
-			// suffix can be empty, but always need at least one byte after the prefix
-			// (implementation detail, not needed by design; but expect keys to be long anyway)
-			return Err(BuilderCreateError::InvalidKeyLength);
-		}
-		let depth = Depth::new(depth).ok_or(BuilderCreateError::InvalidKeyLength)?;
 		if description.contains('\n') {
 			return Err(BuilderCreateError::InvalidDescription {
 				description: description.to_string(),
@@ -48,7 +41,7 @@ where
 		database.write_all(b"\n")?;
 		database.write_all(description.as_bytes())?;
 		database.write_all(b"\n")?;
-		database.write_u8(key_size)?;
+		database.write_u8(key_bytes)?;
 		database.write_u8(payload_size)?;
 		let header_end = database.stream_position()?;
 		let header_size = header_end - start;
@@ -56,11 +49,11 @@ where
 			return Err(BuilderCreateError::HeaderTooBig);
 		}
 		let table = TableBuilder::new(depth);
-		Ok(Self { key_size, payload_size, table, database })
+		Ok(Self { key_bytes, payload_size, table, database })
 	}
 
 	pub fn add_entry(&mut self, key: &[u8], payload: &[u8]) -> io::Result<()> {
-		assert_eq!(key.len(), self.key_size as usize);
+		assert_eq!(key.len(), self.key_bytes as usize);
 		assert_eq!(payload.len(), self.payload_size as usize);
 		self.table.write_key(&mut self.database, key)?;
 		self.database.write_all(payload)?;
@@ -95,7 +88,11 @@ where
 	D: ContentTypeData,
 	W: io::Write + io::Seek,
 {
-	pub fn create(database: W, description: &str, depth: u8) -> Result<Self, BuilderCreateError> {
+	pub fn create(
+		database: W,
+		description: &str,
+		depth: Depth,
+	) -> Result<Self, BuilderCreateError> {
 		assert!(PAYLOAD_SIZE < 0x100);
 		Ok(Self {
 			builder: Builder::create(
