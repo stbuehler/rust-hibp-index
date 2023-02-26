@@ -4,7 +4,7 @@ use std::io::{self, BufRead, Read, Seek};
 
 use crate::buf_read::{BufReader, FileLen, ReadAt};
 
-use super::table::{ForwardRangeSearch, PrefixRange, Prefix};
+use super::table::{ForwardRangeSearch, Prefix, PrefixRange};
 use super::{
 	table::{ForwardSearch, ForwardSearchResult, Table, TableReadError},
 	ContentType, ContentTypeParseError,
@@ -86,16 +86,14 @@ where
 		&'a self,
 		key: &'a [u8],
 		key_bits: u32,
-	) -> impl 'a + Iterator<Item=Result<Vec<u8>, LookupError>> {
+	) -> impl 'a + Iterator<Item = Result<Vec<u8>, LookupError>> {
 		let mut walk = IndexWalk::new(self, key, key_bits);
 		let mut key_buf = Vec::new();
 		key_buf.resize(self.key_size as usize, 0);
-		std::iter::from_fn(move || {
-			match walk.sync_walk(&mut key_buf) {
-				Ok(None) => None,
-				Ok(Some(_payload)) => Some(Ok(key_buf.clone())),
-				Err(e) => Some(Err(e)),
-			}
+		std::iter::from_fn(move || match walk.sync_walk(&mut key_buf) {
+			Ok(None) => None,
+			Ok(Some(_payload)) => Some(Ok(key_buf.clone())),
+			Err(e) => Some(Err(e)),
 		})
 	}
 }
@@ -117,7 +115,7 @@ where
 		assert_eq!(key.len(), index.key_size as usize);
 		let mut database = BufReader::new(&index.database, 16);
 
-		let forward_search  =index.table.depth().start_forward_search(key);
+		let forward_search = index.table.depth().start_forward_search(key);
 
 		let entry_size = index.table.depth().entry_size(index.key_size, index.payload_size);
 		let mut entry_buf = Vec::new();
@@ -145,7 +143,10 @@ impl<R> IndexLookup<'_, '_, R>
 where
 	R: io::Read + io::Seek + ReadAt + FileLen,
 {
-	fn sync_lookup<'a>(&mut self, payload: &'a mut [u8]) -> Result<Option<&'a mut [u8]>, LookupError> {
+	fn sync_lookup<'a>(
+		&mut self,
+		payload: &'a mut [u8],
+	) -> Result<Option<&'a mut [u8]>, LookupError> {
 		if let Some(err) = self.err.take() {
 			return Err(err);
 		}
@@ -194,7 +195,15 @@ where
 
 		let entry_size = index.table.depth().entry_size(index.key_size, index.payload_size);
 
-		Self { index, database, forward_search, prefixes, payload_buf, entry_size, current_prefix_num_entries: None }
+		Self {
+			index,
+			database,
+			forward_search,
+			prefixes,
+			payload_buf,
+			entry_size,
+			current_prefix_num_entries: None,
+		}
 	}
 }
 
@@ -222,7 +231,7 @@ where
 						ForwardSearchResult::Break => return Ok(None),
 					}
 				}
-				// all entries in current prefix done
+			// all entries in current prefix done
 			} else {
 				// currently no prefix active, load next one
 				let prefix = match self.prefixes.next() {

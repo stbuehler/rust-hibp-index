@@ -1,10 +1,10 @@
 use byteorder::{ReadBytesExt, WriteBytesExt, BE};
+use std::cmp::Ordering;
 use std::io::{self, Read, Write};
 use std::ops::Range;
-use std::cmp::Ordering;
 
 pub struct Suffix<'key> {
-	mask_bits: u8,  // bits to use in first octect of suffix
+	mask_bits: u8, // bits to use in first octect of suffix
 	key_suffix: &'key [u8],
 }
 
@@ -139,7 +139,10 @@ impl<'key> ForwardSearch<'key> {
 	pub(super) fn test_entry<'data>(&self, entry: &'data [u8]) -> ForwardSearchResult<'data> {
 		let Suffix { mask_bits, key_suffix } = self.suffix;
 		let (entry_key, entry_payload) = entry.split_at(key_suffix.len());
-		match (key_suffix[0] & mask_bits).cmp(&(entry[0] & mask_bits)).then_with(|| key_suffix[1..].cmp(&entry_key[1..])) {
+		match (key_suffix[0] & mask_bits)
+			.cmp(&(entry[0] & mask_bits))
+			.then_with(|| key_suffix[1..].cmp(&entry_key[1..]))
+		{
 			Ordering::Equal => ForwardSearchResult::Match(entry_payload),
 			// key we're looking for still greater than entry from file
 			Ordering::Greater => ForwardSearchResult::Continue,
@@ -164,19 +167,29 @@ impl<'key> ForwardRangeSearch<'key> {
 		let partial_bits = key_bits & 0x7;
 		if partial_bits > 0 {
 			let mask_end_bits = !(0xff >> partial_bits);
-			Self { prefix: &key[..len_clipped], prefix_end: key[len_clipped] & mask_end_bits, mask_end_bits }
+			Self {
+				prefix: &key[..len_clipped],
+				prefix_end: key[len_clipped] & mask_end_bits,
+				mask_end_bits,
+			}
 		} else {
 			// fully match last byte with mask
-			Self { prefix: &key[..len_clipped-1], prefix_end: key[len_clipped-1], mask_end_bits: 0xff }
+			Self {
+				prefix: &key[..len_clipped - 1],
+				prefix_end: key[len_clipped - 1],
+				mask_end_bits: 0xff,
+			}
 			// this should work too:
 			// Self { prefix: &key[..len_clipped], prefix_end: 0, mask_end_bits: 0 }
 		}
 	}
 
 	pub(super) fn test_key<'data>(&self, key: &'data [u8]) -> ForwardSearchResult<'data> {
-		match self.prefix.cmp(&key[..self.prefix.len()]).then_with(|| {
-			self.prefix_end.cmp(&(key[self.prefix.len()] & self.mask_end_bits))
-		}) {
+		match self
+			.prefix
+			.cmp(&key[..self.prefix.len()])
+			.then_with(|| self.prefix_end.cmp(&(key[self.prefix.len()] & self.mask_end_bits)))
+		{
 			Ordering::Equal => ForwardSearchResult::Match(key),
 			// key we're looking for still greater than entry from file
 			Ordering::Greater => ForwardSearchResult::Continue,
@@ -194,7 +207,9 @@ pub(super) struct Prefix {
 
 impl Prefix {
 	pub(super) fn index(self) -> BucketIndex {
-		if self.depth.0 == 0 { return BucketIndex(0); }
+		if self.depth.0 == 0 {
+			return BucketIndex(0);
+		}
 		BucketIndex(BucketIndexInner::from_be_bytes(self.raw) >> (32 - self.depth.0))
 	}
 
@@ -204,7 +219,8 @@ impl Prefix {
 		let partial_bits = self.depth.0 & 0x7;
 		if partial_bits != 0 {
 			let mask_bits = 0xff >> partial_bits;
-			entry[full_prefix_bytes] = (entry[full_prefix_bytes] & mask_bits) | (self.raw[full_prefix_bytes] & !mask_bits);
+			entry[full_prefix_bytes] =
+				(entry[full_prefix_bytes] & mask_bits) | (self.raw[full_prefix_bytes] & !mask_bits);
 		}
 	}
 }
@@ -245,8 +261,12 @@ impl DoubleEndedIterator for PrefixRange {
 		if first <= self.last {
 			let current = self.last;
 			match self.last.checked_sub(self.step) {
-				None => { self.first = None; },
-				Some(last) => { self.last = last; },
+				None => {
+					self.first = None;
+				},
+				Some(last) => {
+					self.last = last;
+				},
 			}
 			Some(Prefix { raw: current.to_be_bytes(), depth: self.depth })
 		} else {
@@ -283,10 +303,7 @@ pub(super) struct Table {
 
 impl Table {
 	fn new(depth: Depth, file_offsets: Vec<u64>) -> Self {
-		Self {
-			depth,
-			file_offsets,
-		}
+		Self { depth, file_offsets }
 	}
 
 	pub(super) fn depth(&self) -> Depth {
