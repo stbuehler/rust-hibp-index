@@ -1,7 +1,7 @@
 use super::{
 	reader::{INDEX_V0_HEADER_LIMIT, INDEX_V0_MAGIC},
 	table::TableBuilder,
-	ContentTypeData, Depth, KnownContentType,
+	ContentTypeData, Depth, KnownContentType, PayloadData, NoPayload, PayloadDataExt,
 };
 use anyhow::Context;
 use byteorder::WriteBytesExt;
@@ -78,14 +78,15 @@ pub enum BuilderCreateError {
 	HeaderTooBig,
 }
 
-pub struct TypedBuilder<D, W, const PAYLOAD_SIZE: usize> {
+pub struct TypedBuilder<D, P, W> {
 	builder: Builder<W>,
-	_marker: std::marker::PhantomData<D>,
+	_marker: std::marker::PhantomData<(D, P)>,
 }
 
-impl<D, W, const PAYLOAD_SIZE: usize> TypedBuilder<D, W, PAYLOAD_SIZE>
+impl<D, P, W> TypedBuilder<D, P, W>
 where
 	D: ContentTypeData,
+	P: PayloadData,
 	W: io::Write + io::Seek,
 {
 	pub fn create(
@@ -93,21 +94,21 @@ where
 		description: &str,
 		depth: Depth,
 	) -> Result<Self, BuilderCreateError> {
-		assert!(PAYLOAD_SIZE < 0x100);
+		assert!(P::SIZE < 0x100);
 		Ok(Self {
 			builder: Builder::create(
 				database,
 				D::CONTENT_TYPE,
 				description,
-				PAYLOAD_SIZE as u8,
+				P::SIZE as u8,
 				depth,
 			)?,
 			_marker: std::marker::PhantomData,
 		})
 	}
 
-	pub fn add_entry(&mut self, key: &D, payload: &[u8; PAYLOAD_SIZE]) -> io::Result<()> {
-		self.builder.add_entry(key.as_ref(), payload)
+	pub fn add_entry(&mut self, key: &D, payload: &P) -> io::Result<()> {
+		self.builder.add_entry(key.as_ref(), payload.data())
 	}
 
 	pub fn finish(self) -> io::Result<()> {
@@ -115,7 +116,7 @@ where
 	}
 }
 
-impl<D, W> TypedBuilder<D, W, 0>
+impl<D, W> TypedBuilder<D, NoPayload, W>
 where
 	D: ContentTypeData,
 	<D as std::str::FromStr>::Err: std::error::Error + Sync + Send + 'static,
@@ -128,7 +129,7 @@ where
 		if let Some(colon) = line.find(':') {
 			let hash =
 				line[..colon].parse::<D>().context("Failed to parse hash from HIBP source line")?;
-			self.add_entry(&hash, b"").context("Failed to add hash to index")?;
+			self.add_entry(&hash, &NoPayload).context("Failed to add hash to index")?;
 		} else if !line.is_empty() {
 			anyhow::bail!("Invalid HIBP source line: {:?}", line);
 		}

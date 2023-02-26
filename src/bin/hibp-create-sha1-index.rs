@@ -1,6 +1,6 @@
 extern crate hibp_index;
 
-use hibp_index::index::{Depth, TypedBuilder};
+use hibp_index::index::{Depth, TypedBuilder, NoPayload};
 use hibp_index::sha1::SHA1;
 
 use std::fs;
@@ -12,7 +12,7 @@ fn main() -> anyhow::Result<()> {
 		fs::OpenOptions::new().write(true).create_new(true).open("hibp-sha1.index")?,
 	);
 	let mut builder =
-		TypedBuilder::<SHA1, _, 0>::create(output, "pwned-passwords v7", Depth::DEPTH20)?;
+		TypedBuilder::<SHA1, NoPayload, _>::create(output, "pwned-passwords v7", Depth::DEPTH20)?;
 	for line in input.lines() {
 		builder.add_entry_from_hibp_line(&line?)?;
 	}
