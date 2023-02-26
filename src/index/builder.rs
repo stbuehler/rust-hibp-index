@@ -1,7 +1,7 @@
 use super::{
 	reader::{INDEX_V0_HEADER_LIMIT, INDEX_V0_MAGIC},
 	table::TableBuilder,
-	ContentTypeData, Depth, KnownContentType, PayloadData, NoPayload, PayloadDataExt,
+	ContentTypeData, Depth, KnownContentType, NoPayload, PayloadData, PayloadDataExt,
 };
 use anyhow::Context;
 use byteorder::WriteBytesExt;
@@ -96,13 +96,7 @@ where
 	) -> Result<Self, BuilderCreateError> {
 		assert!(P::SIZE < 0x100);
 		Ok(Self {
-			builder: Builder::create(
-				database,
-				D::CONTENT_TYPE,
-				description,
-				P::SIZE as u8,
-				depth,
-			)?,
+			builder: Builder::create(database, D::CONTENT_TYPE, description, P::SIZE as u8, depth)?,
 			_marker: std::marker::PhantomData,
 		})
 	}

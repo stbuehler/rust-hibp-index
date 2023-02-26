@@ -18,7 +18,9 @@ mod seal_trait {
 ///
 // Would be nicer if we could have:
 // pub trait PayloadData: Default + AsRef<[u8; Self::Size]> + AsMut<[u8; Self::Size]> { const SIZE: usize; }
-pub trait PayloadData: Default + AsRef<Self::PayloadArray> + AsMut<Self::PayloadArray> {
+pub trait PayloadData:
+	Default + Clone + AsRef<Self::PayloadArray> + AsMut<Self::PayloadArray>
+{
 	type PayloadArray: seal_trait::U8Array;
 }
 
@@ -37,7 +39,7 @@ pub trait PayloadDataExt: PayloadData {
 	}
 }
 
-impl<P: PayloadData> PayloadDataExt for P { }
+impl<P: PayloadData> PayloadDataExt for P {}
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Default)]
 pub struct NoPayload;

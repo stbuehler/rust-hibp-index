@@ -7,6 +7,7 @@ mod prefix;
 mod reader;
 mod table;
 mod table_helper;
+mod typed_reader;
 
 use self::{depth::BucketIndexInner, prefix::BucketIndex};
 
@@ -15,7 +16,8 @@ pub use self::{
 	content_type::{ContentType, ContentTypeData, ContentTypeParseError, KnownContentType},
 	depth::Depth,
 	key_suffix::KeySuffix,
-	payload_type::{PayloadData, NoPayload, PayloadDataExt},
+	payload_type::{NoPayload, PayloadData, PayloadDataExt},
 	prefix::{Prefix, PrefixRange},
 	reader::{Index, IndexOpenError, LookupError},
+	typed_reader::TypedIndex,
 };

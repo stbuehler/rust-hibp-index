@@ -11,7 +11,7 @@ fn utf16le(data: &str) -> Vec<u8> {
 	result
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct NTLM(pub [u8; 16]);
 
 impl NTLM {

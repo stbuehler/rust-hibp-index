@@ -98,7 +98,7 @@ where
 	}
 }
 
-struct IndexLookup<'r, 'key, R> {
+pub(super) struct IndexLookup<'r, 'key, R> {
 	database: BufReader<'r, R>,
 	entry_buf: Vec<u8>,
 	forward_search: ForwardSearch<'key>,
@@ -110,7 +110,7 @@ impl<'r, 'key, R> IndexLookup<'r, 'key, R>
 where
 	R: io::Read + io::Seek + ReadAt + FileLen,
 {
-	fn new(index: &'r Index<R>, key: &'key [u8]) -> Self {
+	pub(super) fn new(index: &'r Index<R>, key: &'key [u8]) -> Self {
 		assert_ne!(index.key_size, 0);
 		assert_eq!(key.len(), index.key_size as usize);
 		let mut database = BufReader::new(&index.database, 16);
@@ -143,7 +143,7 @@ impl<R> IndexLookup<'_, '_, R>
 where
 	R: io::Read + io::Seek + ReadAt + FileLen,
 {
-	fn sync_lookup<'a>(
+	pub(super) fn sync_lookup<'a>(
 		&mut self,
 		payload: &'a mut [u8],
 	) -> Result<Option<&'a mut [u8]>, LookupError> {
@@ -168,7 +168,7 @@ where
 	}
 }
 
-struct IndexWalk<'r, 'key, R> {
+pub(super) struct IndexWalk<'r, 'key, R> {
 	index: &'r Index<R>,
 	database: BufReader<'r, R>,
 	forward_search: ForwardRangeSearch<'key>,
@@ -182,7 +182,7 @@ impl<'r, 'key, R> IndexWalk<'r, 'key, R>
 where
 	R: io::Read + io::Seek + ReadAt + FileLen,
 {
-	fn new(index: &'r Index<R>, key: &'key [u8], key_bits: u32) -> Self {
+	pub(super) fn new(index: &'r Index<R>, key: &'key [u8], key_bits: u32) -> Self {
 		assert_ne!(index.key_size, 0);
 
 		let database = BufReader::new(&index.database, 16);
@@ -211,11 +211,16 @@ impl<R> IndexWalk<'_, '_, R>
 where
 	R: io::Read + io::Seek + ReadAt + FileLen,
 {
-	fn sync_walk<'a>(&'a mut self, key: &mut [u8]) -> Result<Option<&'a mut [u8]>, LookupError> {
+	pub(super) fn sync_walk<'a>(
+		&'a mut self,
+		key: &mut [u8],
+	) -> Result<Option<&'a mut [u8]>, LookupError> {
 		assert_eq!(key.len(), self.index.key_size as usize);
 
 		loop {
 			if let Some((prefix, mut num_entries)) = self.current_prefix_num_entries.take() {
+				// if all entires are done (num_entries == 0) we just don't write state back;
+				// next (outer) loop iteration will load next prefix.
 				while num_entries > 0 {
 					self.database.read_exact(key)?;
 					self.database.read_exact(&mut self.payload_buf)?;
@@ -231,7 +236,6 @@ where
 						ForwardSearchResult::Break => return Ok(None),
 					}
 				}
-			// all entries in current prefix done
 			} else {
 				// currently no prefix active, load next one
 				let prefix = match self.prefixes.next() {
