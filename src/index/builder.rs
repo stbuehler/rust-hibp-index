@@ -1,8 +1,9 @@
 use super::{
 	reader::{INDEX_V0_HEADER_LIMIT, INDEX_V0_MAGIC},
 	table::TableBuilder,
-	ContentTypeData, Depth, KnownContentType, NoPayload, PayloadData, PayloadDataExt,
+	Depth,
 };
+use crate::data::{KeyData, KnownKeyType, NoPayload, PayloadData};
 use anyhow::Context;
 use byteorder::WriteBytesExt;
 use std::io;
@@ -20,12 +21,12 @@ where
 {
 	pub fn create(
 		mut database: W,
-		content_type: KnownContentType,
+		key_type: KnownKeyType,
 		description: &str,
 		payload_size: u8,
 		depth: Depth,
 	) -> Result<Self, BuilderCreateError> {
-		let key_bytes = content_type.key_bytes_length();
+		let key_bytes = key_type.key_bytes_length();
 		let start = database.stream_position()?;
 		if !depth.valid_key_size(key_bytes) {
 			return Err(BuilderCreateError::InvalidKeyLength);
@@ -37,7 +38,7 @@ where
 		}
 		database.write_all(INDEX_V0_MAGIC.as_bytes())?;
 		database.write_all(b"\n")?;
-		database.write_all(content_type.name().as_bytes())?;
+		database.write_all(key_type.name().as_bytes())?;
 		database.write_all(b"\n")?;
 		database.write_all(description.as_bytes())?;
 		database.write_all(b"\n")?;
@@ -85,7 +86,7 @@ pub struct TypedBuilder<D, P, W> {
 
 impl<D, P, W> TypedBuilder<D, P, W>
 where
-	D: ContentTypeData,
+	D: KeyData,
 	P: PayloadData,
 	W: io::Write + io::Seek,
 {
@@ -96,13 +97,13 @@ where
 	) -> Result<Self, BuilderCreateError> {
 		assert!(P::SIZE < 0x100);
 		Ok(Self {
-			builder: Builder::create(database, D::CONTENT_TYPE, description, P::SIZE as u8, depth)?,
+			builder: Builder::create(database, D::KEY_TYPE, description, P::SIZE as u8, depth)?,
 			_marker: std::marker::PhantomData,
 		})
 	}
 
 	pub fn add_entry(&mut self, key: &D, payload: &P) -> io::Result<()> {
-		self.builder.add_entry(key.as_ref(), payload.data())
+		self.builder.add_entry(key.data(), payload.data())
 	}
 
 	pub fn finish(self) -> io::Result<()> {
@@ -112,7 +113,7 @@ where
 
 impl<D, W> TypedBuilder<D, NoPayload, W>
 where
-	D: ContentTypeData,
+	D: KeyData + std::str::FromStr,
 	<D as std::str::FromStr>::Err: std::error::Error + Sync + Send + 'static,
 	W: io::Write + io::Seek,
 {

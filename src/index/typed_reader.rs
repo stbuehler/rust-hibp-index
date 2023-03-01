@@ -1,10 +1,13 @@
 use std::io;
 
-use crate::buf_read::{FileLen, ReadAt};
+use crate::{
+	buf_read::{FileLen, ReadAt},
+	data::{KeyData, PayloadData},
+};
 
 use super::{
 	reader::{IndexLookup, IndexWalk},
-	ContentTypeData, Index, IndexOpenError, LookupError, PayloadData, PayloadDataExt,
+	Index, IndexOpenError, LookupError,
 };
 
 pub struct TypedIndex<D, P, R> {
@@ -14,15 +17,15 @@ pub struct TypedIndex<D, P, R> {
 
 impl<D, P, R> TypedIndex<D, P, R>
 where
-	D: ContentTypeData,
+	D: KeyData,
 	P: PayloadData,
 	R: io::Read + io::Seek + ReadAt + FileLen,
 {
 	pub fn new(index: Index<R>) -> Result<Self, IndexOpenError> {
-		if index.content_type() != &*D::CONTENT_TYPE {
+		if index.key_type() != &*D::KEY_TYPE {
 			return Err(IndexOpenError::InvalidKeyLength);
 		}
-		if index.key_size() != D::CONTENT_TYPE.key_bytes_length() {
+		if index.key_size() != D::KEY_TYPE.key_bytes_length() {
 			return Err(IndexOpenError::InvalidKeyLength);
 		}
 		if (index.payload_size() as usize) < P::SIZE {
@@ -42,7 +45,7 @@ where
 
 	pub fn lookup(&self, key: &D) -> Result<Option<P>, LookupError> {
 		let mut payload = P::default();
-		if IndexLookup::new(&self.index, key.as_ref()).sync_lookup(payload.data_mut())?.is_none() {
+		if IndexLookup::new(&self.index, key.data()).sync_lookup(payload.data_mut())?.is_none() {
 			return Ok(None);
 		}
 		Ok(Some(payload))
@@ -55,7 +58,7 @@ where
 	) -> impl 'a + Iterator<Item = Result<(D, P), LookupError>> {
 		let mut walk = IndexWalk::new(&self.index, key, key_bits);
 		let mut key = D::default();
-		std::iter::from_fn(move || match walk.sync_walk(key.as_mut()) {
+		std::iter::from_fn(move || match walk.sync_walk(key.data_mut()) {
 			Ok(None) => None,
 			Ok(Some(full_payload)) => {
 				let mut payload = P::default();

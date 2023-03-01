@@ -1,32 +1,21 @@
-use byteorder::{WriteBytesExt, LE};
 use std::fmt;
 use std::ops::{Deref, DerefMut};
 use std::str::FromStr;
 
-fn utf16le(data: &str) -> Vec<u8> {
-	let mut result = Vec::new();
-	for c in data.encode_utf16() {
-		result.write_u16::<LE>(c).unwrap();
-	}
-	result
-}
-
 #[derive(Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct NTLM(pub [u8; 16]);
+pub struct SHA1(pub [u8; 20]);
 
-impl NTLM {
-	// NTHash: MD4(UTF-16-LE(password))
-	pub fn hash(password: &str) -> Self {
-		use md4::Digest;
-		let buf = utf16le(password);
-		let dig = md4::Md4::digest(&buf);
-		let mut this = Self([0u8; 16]);
+impl SHA1 {
+	pub fn hash(data: &[u8]) -> Self {
+		use sha1::Digest;
+		let dig = sha1::Sha1::digest(data);
+		let mut this = Self([0u8; 20]);
 		this.0.copy_from_slice(&dig);
 		this
 	}
 
 	pub fn hex(&self) -> impl Deref<Target = str> {
-		let mut hex = NTLMHex([0u8; 32]);
+		let mut hex = SHA1Hex([0u8; 40]);
 		#[allow(clippy::needless_borrow)]
 		// false positive - not needless: the borrowed expression implements the required traits
 		// still prefer to pass a reference to the array, not a copy of the array!
@@ -35,17 +24,17 @@ impl NTLM {
 	}
 }
 
-impl FromStr for NTLM {
+impl FromStr for SHA1 {
 	type Err = hex::FromHexError;
 
 	fn from_str(hex: &str) -> Result<Self, Self::Err> {
-		let mut this = Self([0u8; 16]);
+		let mut this = Self([0u8; 20]);
 		hex::decode_to_slice(hex, &mut this.0)?;
 		Ok(this)
 	}
 }
 
-impl Deref for NTLM {
+impl Deref for SHA1 {
 	type Target = [u8];
 
 	fn deref(&self) -> &Self::Target {
@@ -53,43 +42,47 @@ impl Deref for NTLM {
 	}
 }
 
-impl DerefMut for NTLM {
+impl DerefMut for SHA1 {
 	fn deref_mut(&mut self) -> &mut Self::Target {
 		&mut self.0
 	}
 }
 
-impl AsRef<[u8]> for NTLM {
-	fn as_ref(&self) -> &[u8] {
+impl AsRef<[u8; 20]> for SHA1 {
+	fn as_ref(&self) -> &[u8; 20] {
 		&self.0
 	}
 }
 
-impl AsMut<[u8]> for NTLM {
-	fn as_mut(&mut self) -> &mut [u8] {
+impl AsMut<[u8; 20]> for SHA1 {
+	fn as_mut(&mut self) -> &mut [u8; 20] {
 		&mut self.0
 	}
 }
 
-impl fmt::Debug for NTLM {
+impl fmt::Debug for SHA1 {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		f.write_str(&self.hex())
 	}
 }
 
-impl fmt::Display for NTLM {
+impl fmt::Display for SHA1 {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		f.write_str(&self.hex())
 	}
 }
 
-impl crate::index::ContentTypeData for NTLM {
-	const CONTENT_TYPE: crate::index::KnownContentType = crate::index::KnownContentType::NTLM;
+impl crate::data::FixedByteArrayImpl for SHA1 {
+	type ByteArray = [u8; 20];
 }
 
-struct NTLMHex([u8; 32]);
+impl crate::data::KeyData for SHA1 {
+	const KEY_TYPE: crate::data::KnownKeyType = crate::data::KnownKeyType::SHA1;
+}
 
-impl Deref for NTLMHex {
+struct SHA1Hex([u8; 40]);
+
+impl Deref for SHA1Hex {
 	type Target = str;
 
 	fn deref(&self) -> &Self::Target {

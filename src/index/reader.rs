@@ -2,19 +2,23 @@ use byteorder::ReadBytesExt;
 use std::convert::TryFrom;
 use std::io::{self, BufRead, Read, Seek};
 
-use crate::buf_read::{BufReader, FileLen, ReadAt};
+use crate::{
+	buf_read::{BufReader, FileLen, ReadAt},
+	data::KeyType,
+	errors::KeyTypeParseError,
+};
 
 use super::{
 	table::{Table, TableReadError},
 	table_helper::{ForwardRangeSearch, ForwardSearch, ForwardSearchResult},
-	ContentType, ContentTypeParseError, Prefix, PrefixRange,
+	Prefix, PrefixRange,
 };
 
 pub const INDEX_V0_MAGIC: &str = "hash-index-v0";
 pub const INDEX_V0_HEADER_LIMIT: u64 = 4096;
 
 pub struct Index<R> {
-	content_type: ContentType,
+	key_type: KeyType,
 	description: String,
 	key_size: u8,
 	payload_size: u8,
@@ -26,8 +30,8 @@ impl<R> Index<R>
 where
 	R: io::Read + io::Seek + ReadAt + FileLen,
 {
-	pub fn content_type(&self) -> &ContentType {
-		&self.content_type
+	pub fn key_type(&self) -> &KeyType {
+		&self.key_type
 	}
 
 	pub fn description(&self) -> &str {
@@ -47,21 +51,21 @@ where
 		reader.rewind()?;
 		let mut header = reader.by_ref().take(INDEX_V0_HEADER_LIMIT);
 		let mut magic = String::new();
-		let mut content_type = String::new();
+		let mut key_type = String::new();
 		let mut description = String::new();
 		header.read_line(&mut magic)?;
-		header.read_line(&mut content_type)?;
+		header.read_line(&mut key_type)?;
 		header.read_line(&mut description)?;
-		if !magic.ends_with('\n') || !content_type.ends_with('\n') || !description.ends_with('\n') {
+		if !magic.ends_with('\n') || !key_type.ends_with('\n') || !description.ends_with('\n') {
 			return Err(IndexOpenError::InvalidHeader);
 		}
 		magic.pop();
-		content_type.pop();
+		key_type.pop();
 		description.pop();
 		if magic != INDEX_V0_MAGIC {
 			return Err(IndexOpenError::InvalidHeader);
 		}
-		let content_type = ContentType::try_from(content_type)?;
+		let key_type = KeyType::try_from(key_type)?;
 		let key_size = header.read_u8()?;
 		let payload_size = header.read_u8()?;
 		#[allow(clippy::drop_non_drop)]
@@ -71,7 +75,7 @@ where
 			return Err(IndexOpenError::InvalidKeyLength);
 		}
 		drop(reader);
-		Ok(Self { content_type, description, key_size, payload_size, table, database })
+		Ok(Self { key_type, description, key_size, payload_size, table, database })
 	}
 
 	pub fn lookup<'a>(
@@ -260,8 +264,8 @@ where
 pub enum IndexOpenError {
 	#[error("IO error: {0}")]
 	IOError(#[from] io::Error),
-	#[error("content-type error: {0}")]
-	ContentTypeError(#[from] ContentTypeParseError),
+	#[error("key-type error: {0}")]
+	KeyTypeError(#[from] KeyTypeParseError),
 	#[error("table read error: {0}")]
 	TableReadError(#[from] TableReadError),
 	#[error("invalid key / table depth length")]

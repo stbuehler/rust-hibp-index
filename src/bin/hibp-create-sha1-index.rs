@@ -1,7 +1,7 @@
 extern crate hibp_index;
 
-use hibp_index::index::{Depth, NoPayload, TypedBuilder};
-use hibp_index::sha1::SHA1;
+use hibp_index::data::{NoPayload, SHA1};
+use hibp_index::index::{Depth, TypedBuilder};
 
 use std::fs;
 use std::io::{BufRead, BufReader, BufWriter};

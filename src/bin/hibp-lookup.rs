@@ -1,8 +1,7 @@
 extern crate hibp_index;
 
-use hibp_index::index::{ContentTypeData, Index, NoPayload, TypedIndex};
-use hibp_index::ntlm::NTLM;
-use hibp_index::sha1::SHA1;
+use hibp_index::data::{KeyData, NoPayload, NTLM, SHA1};
+use hibp_index::index::{Index, TypedIndex};
 
 use std::fs;
 use std::io::{self, BufRead};
@@ -91,23 +90,23 @@ fn app() -> anyhow::Result<AppConfig> {
 
 fn open_index<D>(path: &Path) -> anyhow::Result<TypedIndex<D, NoPayload, fs::File>>
 where
-	D: ContentTypeData,
+	D: KeyData,
 {
 	let index = Index::open(fs::File::open(path)?)?;
-	if index.content_type() != &*D::CONTENT_TYPE {
+	if index.key_type() != &*D::KEY_TYPE {
 		anyhow::bail!(
-			"{:?} uses invalid content type: {:?}, expected {:?}",
+			"{:?} uses invalid key type: {:?}, expected {:?}",
 			path,
-			index.content_type(),
-			D::CONTENT_TYPE
+			index.key_type(),
+			D::KEY_TYPE
 		);
 	}
-	if index.key_size() != D::CONTENT_TYPE.key_bytes_length() {
+	if index.key_size() != D::KEY_TYPE.key_bytes_length() {
 		anyhow::bail!(
 			"{:?} uses invalid key size: {:?}, expected {:?}",
 			path,
 			index.key_size(),
-			D::CONTENT_TYPE.key_bytes_length()
+			D::KEY_TYPE.key_bytes_length()
 		);
 	}
 	Ok(TypedIndex::<D, NoPayload, _>::new(index)?)
@@ -119,16 +118,16 @@ fn check<D>(
 	hash: &D,
 ) -> anyhow::Result<()>
 where
-	D: ContentTypeData,
+	D: KeyData + std::fmt::Display,
 {
 	let is_present = index.lookup(hash)?.is_some();
 	if cfg.one_shot {
 		std::process::exit(if is_present { 1 } else { 0 });
 	}
 	if is_present {
-		println!("Found {}: {}", D::CONTENT_TYPE.name(), hash);
+		println!("Found {}: {}", D::KEY_TYPE.name(), hash);
 	} else {
-		println!("Not found {}: {}", D::CONTENT_TYPE.name(), hash);
+		println!("Not found {}: {}", D::KEY_TYPE.name(), hash);
 	}
 	Ok(())
 }
