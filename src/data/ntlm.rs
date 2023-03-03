@@ -23,7 +23,7 @@ impl NTLM {
 	pub fn hash(password: &str) -> Self {
 		use md4::Digest;
 		let buf = utf16le(password);
-		let dig = md4::Md4::digest(&buf);
+		let dig = md4::Md4::digest(buf);
 		let mut this = Self([0u8; 16]);
 		this.0.copy_from_slice(&dig);
 		this
