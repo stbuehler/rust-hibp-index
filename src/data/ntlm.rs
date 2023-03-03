@@ -11,11 +11,15 @@ fn utf16le(data: &str) -> Vec<u8> {
 	result
 }
 
+/// Storing NT hash
+///
+/// NT hashes are sometimes called NTLM hashes (not by Microsoft though).
+/// The NT hash is the MD4-checksum of the UTF-16LE encoded plaintext.
 #[derive(Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct NTLM(pub [u8; 16]);
 
 impl NTLM {
-	// NTHash: MD4(UTF-16-LE(password))
+	/// Calculate hash of plaintext
 	pub fn hash(password: &str) -> Self {
 		use md4::Digest;
 		let buf = utf16le(password);
@@ -25,7 +29,8 @@ impl NTLM {
 		this
 	}
 
-	pub fn hex(&self) -> impl Deref<Target = str> {
+	/// Hexadecimal representation
+	pub fn hex(&self) -> impl Deref<Target = str> + AsRef<str> + AsRef<[u8; 32]> + AsRef<[u8]> + std::fmt::Display {
 		let mut hex = NTLMHex([0u8; 32]);
 		#[allow(clippy::needless_borrow)]
 		// false positive - not needless: the borrowed expression implements the required traits
@@ -91,12 +96,4 @@ impl crate::data::KeyData for NTLM {
 	const KEY_TYPE: crate::data::KnownKeyType = crate::data::KnownKeyType::NTLM;
 }
 
-struct NTLMHex([u8; 32]);
-
-impl Deref for NTLMHex {
-	type Target = str;
-
-	fn deref(&self) -> &Self::Target {
-		std::str::from_utf8(&self.0).unwrap()
-	}
-}
+build_hex_wrapper!(NTLMHex[32]);

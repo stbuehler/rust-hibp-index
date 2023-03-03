@@ -1,3 +1,5 @@
+//! Seekable buffered reader
+
 mod read_at;
 
 pub use self::read_at::{FileLen, ReadAt};
@@ -8,6 +10,10 @@ use std::io;
 const PAGE_SIZE_BITS: u32 = 13;
 const PAGE_SIZE: usize = 1 << PAGE_SIZE_BITS;
 
+/// Seekable buffered reader; underlying reader should support parallel reading at different file positions
+///
+/// The underlying reader is a shared reference, which is why it needs to support
+/// some sort of "parallel" reading.
 pub struct BufReader<'a, R> {
 	cache: SizedCache<u64, Vec<u8>>,
 	position: u64,
@@ -15,16 +21,21 @@ pub struct BufReader<'a, R> {
 }
 
 impl<'a, R: ReadAt> BufReader<'a, R> {
+	/// Create new reader with given number of pages as buffer
 	pub fn new(reader: &'a R, cache_capacity: usize) -> Self {
 		let cache = SizedCache::with_size(cache_capacity);
 		Self { cache, position: 0, reader }
 	}
 
-	// never fails
+	/// Seek to absolut position from file start
+	///
+	/// Never fails as no calculation is done -> can't overflow.
+	/// Also doesn't involve any actual IO.
 	pub fn seek_from_start(&mut self, position: u64) {
 		self.position = position;
 	}
 
+	/// Return current position in file
 	pub fn tell(&mut self) -> u64 {
 		self.position
 	}

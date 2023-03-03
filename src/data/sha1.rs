@@ -2,10 +2,12 @@ use std::fmt;
 use std::ops::{Deref, DerefMut};
 use std::str::FromStr;
 
+/// SHA-1 hash data
 #[derive(Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct SHA1(pub [u8; 20]);
 
 impl SHA1 {
+	/// Calculate SHA-1 hash of plaintext data
 	pub fn hash(data: &[u8]) -> Self {
 		use sha1::Digest;
 		let dig = sha1::Sha1::digest(data);
@@ -14,7 +16,8 @@ impl SHA1 {
 		this
 	}
 
-	pub fn hex(&self) -> impl Deref<Target = str> {
+	/// Hexadecimal representation
+	pub fn hex(&self) -> impl Deref<Target = str> + AsRef<str> + AsRef<[u8; 40]> + AsRef<[u8]> + std::fmt::Display {
 		let mut hex = SHA1Hex([0u8; 40]);
 		#[allow(clippy::needless_borrow)]
 		// false positive - not needless: the borrowed expression implements the required traits
@@ -80,12 +83,4 @@ impl crate::data::KeyData for SHA1 {
 	const KEY_TYPE: crate::data::KnownKeyType = crate::data::KnownKeyType::SHA1;
 }
 
-struct SHA1Hex([u8; 40]);
-
-impl Deref for SHA1Hex {
-	type Target = str;
-
-	fn deref(&self) -> &Self::Target {
-		std::str::from_utf8(&self.0).unwrap()
-	}
-}
+build_hex_wrapper!(SHA1Hex[40]);

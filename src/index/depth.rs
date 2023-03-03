@@ -33,7 +33,9 @@ impl Depth {
 	const TABLE_MAX_DEPTH: u8 = 24;
 
 	// these obviously should obey the above limit (unwrap/expect not const yet).
+	/// Depth of 20 bits (always valid)
 	pub const DEPTH20: Self = Self(20);
+	/// Depth of 16 bits (always valid)
 	pub const DEPTH16: Self = Self(16);
 
 	/// Create a new depth; returns `None` if depth is too large.

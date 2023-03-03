@@ -1,3 +1,7 @@
+//! Various types representing "data" (keys, payload, related)
+#[macro_use]
+mod macros;
+
 mod hex;
 mod key_type;
 mod ntlm;
@@ -34,6 +38,7 @@ mod seal_trait {
 pub trait FixedByteArrayImpl:
 	Default + Clone + AsRef<Self::ByteArray> + AsMut<Self::ByteArray>
 {
+	/// underlying [u8; N] type
 	type ByteArray: seal_trait::U8Array;
 }
 
@@ -43,6 +48,7 @@ pub trait FixedByteArrayImpl:
 // Would be nicer if we could have:
 // pub trait FixedByteArray: Default + Clone + AsRef<[u8; Self::SIZE]> + AsMut<[u8; Self::SIZE]> { const SIZE: usize; }
 pub trait FixedByteArray: FixedByteArrayImpl {
+	/// Length of underlying byte arry
 	const SIZE: usize = <Self::ByteArray as seal_trait::U8Array>::SIZE;
 
 	/// Data of `Self::SIZE` length, but type system can't handle it yet
@@ -75,6 +81,9 @@ impl<T: FixedByteArrayImpl> FixedByteArray for T {}
 
 /// Explicitly mark `FixedByteArray` to be used as key (hash).
 pub trait KeyData: FixedByteArray {
+	/// Key type
+	///
+	/// For types that store hash data for a certain hash we really should know the key type.
 	const KEY_TYPE: KnownKeyType;
 
 	/// Build prefix with given number of bits

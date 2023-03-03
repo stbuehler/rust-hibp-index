@@ -1,5 +1,6 @@
 use super::KeyData;
 
+/// Prefix of key data bitstring
 #[derive(Clone)]
 pub struct Prefix<D> {
 	key: D,
@@ -109,6 +110,7 @@ where
 	}
 }
 
+/// Suffix of key data bitstring
 #[derive(Clone)]
 pub struct Suffix<D> {
 	key: D,

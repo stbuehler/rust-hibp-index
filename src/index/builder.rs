@@ -3,11 +3,15 @@ use super::{
 	table::TableBuilder,
 	Depth,
 };
-use crate::data::{KeyData, KnownKeyType, NoPayload, PayloadData};
+use crate::{
+	data::{KeyData, KnownKeyType, NoPayload, PayloadData},
+	errors::BuilderCreateError,
+};
 use anyhow::Context;
 use byteorder::WriteBytesExt;
 use std::io;
 
+/// Build index in database file
 pub struct Builder<W> {
 	key_bytes: u8,
 	payload_size: u8,
@@ -19,6 +23,7 @@ impl<W> Builder<W>
 where
 	W: io::Write + io::Seek,
 {
+	/// Create new builder to write database
 	pub fn create(
 		mut database: W,
 		key_type: KnownKeyType,
@@ -53,6 +58,7 @@ where
 		Ok(Self { key_bytes, payload_size, table, database })
 	}
 
+	/// Add entry to database (must be added in order)
 	pub fn add_entry(&mut self, key: &[u8], payload: &[u8]) -> io::Result<()> {
 		assert_eq!(key.len(), self.key_bytes as usize);
 		assert_eq!(payload.len(), self.payload_size as usize);
@@ -61,24 +67,14 @@ where
 		Ok(())
 	}
 
+	/// Write index table for database
 	pub fn finish(mut self) -> io::Result<()> {
 		self.table.close(&mut self.database)?;
 		Ok(())
 	}
 }
 
-#[derive(thiserror::Error, Debug)]
-pub enum BuilderCreateError {
-	#[error("IO error: {0}")]
-	IOError(#[from] io::Error),
-	#[error("Invalid description: {description:?}")]
-	InvalidDescription { description: String },
-	#[error("invalid key / table depth length")]
-	InvalidKeyLength,
-	#[error("Header too big")]
-	HeaderTooBig,
-}
-
+/// Builder with generic types for fixed-size key and data
 pub struct TypedBuilder<D, P, W> {
 	builder: Builder<W>,
 	_marker: std::marker::PhantomData<(D, P)>,
@@ -90,6 +86,7 @@ where
 	P: PayloadData,
 	W: io::Write + io::Seek,
 {
+	/// Create a new builder
 	pub fn create(
 		database: W,
 		description: &str,
@@ -102,10 +99,12 @@ where
 		})
 	}
 
+	/// Add entry to database (must be added in order)
 	pub fn add_entry(&mut self, key: &D, payload: &P) -> io::Result<()> {
 		self.builder.add_entry(key.data(), payload.data())
 	}
 
+	/// Write index table for database
 	pub fn finish(self) -> io::Result<()> {
 		self.builder.finish()
 	}
@@ -117,9 +116,11 @@ where
 	<D as std::str::FromStr>::Err: std::error::Error + Sync + Send + 'static,
 	W: io::Write + io::Seek,
 {
-	// https://haveibeenpwned.com/API/v3#PwnedPasswords
-	// > The downloadable source data delimits the hash and the password count with a colon (:) and each line with a CRLF.
-	// we ignore the password count (empty payload to builder)
+	/// Add entry from HIBP file line
+	///
+	/// https://haveibeenpwned.com/API/v3#PwnedPasswords
+	/// > The downloadable source data delimits the hash and the password count with a colon (:) and each line with a CRLF.
+	/// we ignore the password count (empty payload to builder)
 	pub fn add_entry_from_hibp_line(&mut self, line: &str) -> anyhow::Result<()> {
 		if let Some(colon) = line.find(':') {
 			let hash =

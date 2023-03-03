@@ -12,6 +12,7 @@ impl BucketIndex {
 const KEY_BYTES: usize = std::mem::size_of::<BucketIndexInner>();
 const KEY_BITS_U8: u8 = 8 * (KEY_BYTES as u8);
 
+/// Prefix of key (internal hardcoded maximum length [`Depth`])
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Prefix {
 	raw: [u8; KEY_BYTES],

@@ -1,5 +1,6 @@
 use std::io;
 
+/// Read from file at given offset
 pub trait ReadAt {
 	/// Read from file at given offset into buffer.
 	///
@@ -33,6 +34,7 @@ pub trait ReadAt {
 
 /// Need file size to support `SeekFrom::End`
 pub trait FileLen {
+	/// Size of file
 	fn file_len(&self) -> io::Result<u64>;
 }
 

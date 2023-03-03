@@ -5,11 +5,11 @@ use std::io::{self, BufRead, Read, Seek};
 use crate::{
 	buf_read::{BufReader, FileLen, ReadAt},
 	data::KeyType,
-	errors::KeyTypeParseError,
+	errors::{IndexOpenError, LookupError},
 };
 
 use super::{
-	table::{Table, TableReadError},
+	table::Table,
 	table_helper::{ForwardRangeSearch, ForwardSearch, ForwardSearchResult},
 	Prefix, PrefixRange,
 };
@@ -17,6 +17,7 @@ use super::{
 pub const INDEX_V0_MAGIC: &str = "hash-index-v0";
 pub const INDEX_V0_HEADER_LIMIT: u64 = 4096;
 
+/// Reader for indexed database
 pub struct Index<R> {
 	key_type: KeyType,
 	description: String,
@@ -30,22 +31,27 @@ impl<R> Index<R>
 where
 	R: io::Read + io::Seek + ReadAt + FileLen,
 {
+	/// Key type of entries
 	pub fn key_type(&self) -> &KeyType {
 		&self.key_type
 	}
 
+	/// Description of database
 	pub fn description(&self) -> &str {
 		&self.description
 	}
 
+	/// Length (in bytes) of key data of each entry
 	pub fn key_size(&self) -> u8 {
 		self.key_size
 	}
 
+	/// Length (in bytes) of payload data of each entry
 	pub fn payload_size(&self) -> u8 {
 		self.payload_size
 	}
 
+	/// Open index from reader
 	pub fn open(mut database: R) -> Result<Self, IndexOpenError> {
 		let mut reader = io::BufReader::new(&mut database);
 		reader.rewind()?;
@@ -78,6 +84,10 @@ where
 		Ok(Self { key_type, description, key_size, payload_size, table, database })
 	}
 
+	/// Lookup entry with given key in index
+	///
+	/// Write payload data to passed buffer, and return slice to written part.
+	/// (Truncates if index contains more payload data.)
 	pub fn lookup<'a>(
 		&self,
 		key: &[u8],
@@ -86,6 +96,9 @@ where
 		IndexLookup::new(self, key).sync_lookup(payload)
 	}
 
+	/// Loop over all entries with given key prefix.
+	///
+	/// Iterator only returns key (as `Vec<u8>`), not the payload.
 	pub fn lookup_range<'a>(
 		&'a self,
 		key: &'a [u8],
@@ -258,26 +271,4 @@ where
 			}
 		}
 	}
-}
-
-#[derive(thiserror::Error, Debug)]
-pub enum IndexOpenError {
-	#[error("IO error: {0}")]
-	IOError(#[from] io::Error),
-	#[error("key-type error: {0}")]
-	KeyTypeError(#[from] KeyTypeParseError),
-	#[error("table read error: {0}")]
-	TableReadError(#[from] TableReadError),
-	#[error("invalid key / table depth length")]
-	InvalidKeyLength,
-	#[error("invalid/unknown header format")]
-	InvalidHeader,
-}
-
-#[derive(thiserror::Error, Debug)]
-pub enum LookupError {
-	#[error("IO error: {0}")]
-	IOError(#[from] io::Error),
-	#[error("Invalid length of segment containing key (not a multiple of entry size)")]
-	InvalidSegmentLength,
 }

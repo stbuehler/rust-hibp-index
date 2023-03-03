@@ -7,7 +7,11 @@ use crate::errors::KeyTypeParseError;
 #[non_exhaustive]
 /// Known key type this crate uses to build stuff
 pub enum KnownKeyType {
+	/// SHA-1 hash data
 	SHA1,
+	/// NT hash data
+	///
+	/// -> md4 hash of UTF16-LE encoded data
 	NTLM,
 }
 
@@ -71,7 +75,9 @@ pub struct KeyType(InnerKeyType);
 
 impl KeyType {
 	// easier access to known key types
+	/// SHA-1 key type
 	pub const SHA1: KnownKeyType = KnownKeyType::SHA1;
+	/// NT hash key type
 	pub const NTLM: KnownKeyType = KnownKeyType::NTLM;
 
 	fn from_known(input: &str) -> Option<KnownKeyType> {

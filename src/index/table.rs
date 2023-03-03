@@ -2,6 +2,7 @@ use byteorder::{ReadBytesExt, WriteBytesExt, BE};
 use std::io::{self, Read, Write};
 use std::ops::Range;
 
+use crate::errors::TableReadError;
 use super::{BucketIndex, Depth, Prefix, PrefixRange};
 
 pub(super) struct Table {
@@ -57,18 +58,6 @@ impl Table {
 		}
 		Ok(Table::new(depth, file_offsets))
 	}
-}
-
-#[derive(thiserror::Error, Debug)]
-pub enum TableReadError {
-	#[error("IO error: {0}")]
-	IOError(#[from] io::Error),
-	#[error("Invalid depth {depth}")]
-	InvalidDepth { depth: u8 },
-	#[error("Table data too large")]
-	TooMuchTableData,
-	#[error("Table offsets not increasing")]
-	InvalidTableOffsets,
 }
 
 pub(super) struct TableBuilder {
