@@ -1,10 +1,13 @@
+mod hex;
 mod key_type;
 mod ntlm;
+mod prefix;
 mod sha1;
 
 pub use self::{
 	key_type::{KeyType, KnownKeyType},
 	ntlm::NTLM,
+	prefix::{Prefix, Suffix},
 	sha1::SHA1,
 };
 
@@ -25,6 +28,9 @@ mod seal_trait {
 }
 
 /// Used to implement `FixedByteArray` due to current limitations in type system.
+///
+/// While those type could easily be `Copy` too we might want to be careful copying
+/// them around implicitly - so only ask for `Clone`.
 pub trait FixedByteArrayImpl:
 	Default + Clone + AsRef<Self::ByteArray> + AsMut<Self::ByteArray>
 {
@@ -48,6 +54,21 @@ pub trait FixedByteArray: FixedByteArrayImpl {
 	fn data_mut(&mut self) -> &mut [u8] {
 		self.as_mut().as_mut()
 	}
+
+	/// Returns an `impl std::fmt::Display` showing the hex digits of the data
+	fn hex(&self) -> hex::DisplayHex<'_> {
+		hex::DisplayHex::new(self.data(), 0, Self::SIZE as u32 * 8)
+	}
+
+	/// Returns an `impl std::fmt::Display` showing the hex digits of the data in the given bit range
+	///
+	/// Shows all hex digits that contain at least one bit to be shown (but doesn't mask the other bits;
+	/// that might change though).
+	fn hex_bit_range(&self, start: u32, end: u32) -> hex::DisplayHex<'_> {
+		assert!(start <= end);
+		assert!(end <= Self::SIZE as u32 * 8);
+		hex::DisplayHex::new(self.data(), start, end)
+	}
 }
 
 impl<T: FixedByteArrayImpl> FixedByteArray for T {}
@@ -55,6 +76,21 @@ impl<T: FixedByteArrayImpl> FixedByteArray for T {}
 /// Explicitly mark `FixedByteArray` to be used as key (hash).
 pub trait KeyData: FixedByteArray {
 	const KEY_TYPE: KnownKeyType;
+
+	/// Build prefix with given number of bits
+	fn prefix(&self, bits: u32) -> Prefix<Self> {
+		Prefix::<Self>::new_from_key(self, bits)
+	}
+
+	/// Build suffix after stripping prefix with given number of bits
+	fn suffix(&self, bits: u32) -> Suffix<Self> {
+		Suffix::<Self>::new_from_key(self, bits)
+	}
+
+	/// Split data into prefix (with given number of bits) and suffix
+	fn split(&self, bits: u32) -> (Prefix<Self>, Suffix<Self>) {
+		(self.prefix(bits), self.suffix(bits))
+	}
 }
 
 /// Explicitly mark `FixedByteArray` to be used as payload.
