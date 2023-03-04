@@ -24,6 +24,6 @@ pub use self::{
 	depth::Depth,
 	key_suffix::KeySuffix,
 	prefix::{Prefix, PrefixRange},
-	reader::{Index},
+	reader::Index,
 	typed_reader::TypedIndex,
 };

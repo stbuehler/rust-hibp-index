@@ -2,8 +2,8 @@ use byteorder::{ReadBytesExt, WriteBytesExt, BE};
 use std::io::{self, Read, Write};
 use std::ops::Range;
 
-use crate::errors::TableReadError;
 use super::{BucketIndex, Depth, Prefix, PrefixRange};
+use crate::errors::TableReadError;
 
 pub(super) struct Table {
 	depth: Depth,

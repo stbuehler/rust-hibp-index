@@ -17,7 +17,9 @@ impl SHA1 {
 	}
 
 	/// Hexadecimal representation
-	pub fn hex(&self) -> impl Deref<Target = str> + AsRef<str> + AsRef<[u8; 40]> + AsRef<[u8]> + std::fmt::Display {
+	pub fn hex(
+		&self,
+	) -> impl Deref<Target = str> + AsRef<str> + AsRef<[u8; 40]> + AsRef<[u8]> + std::fmt::Display {
 		let mut hex = SHA1Hex([0u8; 40]);
 		#[allow(clippy::needless_borrow)]
 		// false positive - not needless: the borrowed expression implements the required traits

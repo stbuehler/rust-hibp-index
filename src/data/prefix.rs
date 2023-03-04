@@ -31,7 +31,7 @@ where
 		let need_bits = bits & 7;
 		if need_bits != 0 {
 			let mask_bits: u8 = !(0xff >> need_bits);
-			key_data[octets-1] &= mask_bits;
+			key_data[octets - 1] &= mask_bits;
 		}
 		Self { key, bits }
 	}
@@ -70,7 +70,7 @@ where
 			let mut shared_octet: u8 = 0;
 			hex::decode_to_slice(shared_octet_str, std::slice::from_mut(&mut shared_octet))?;
 			key_data[start] |= mask_bits & shared_octet;
-			hex::decode_to_slice(&suffix_str[1..], &mut key_data[start+1..])?;
+			hex::decode_to_slice(&suffix_str[1..], &mut key_data[start + 1..])?;
 		} else if start == D::SIZE {
 			// prefix already is full key
 			if !suffix_str.is_empty() {
@@ -80,7 +80,7 @@ where
 			let mut shared_octet: u8 = 0;
 			hex::decode_to_slice(&suffix_str[..2], std::slice::from_mut(&mut shared_octet))?;
 			key_data[start] |= mask_bits & shared_octet;
-			hex::decode_to_slice(&suffix_str[2..], &mut key_data[start+1..])?;
+			hex::decode_to_slice(&suffix_str[2..], &mut key_data[start + 1..])?;
 		}
 		Ok(key)
 	}
@@ -93,7 +93,7 @@ where
 		let mut key = self.key.clone();
 		let key_data = key.data_mut();
 		let start = self.bits as usize / 8;
-		key_data[start+1..].copy_from_slice(&suffix.key.data()[start+1..]);
+		key_data[start + 1..].copy_from_slice(&suffix.key.data()[start + 1..]);
 		// As both prefix and suffix are "clean" in unused bits we can
 		// combine the (potentially) overlapping byte with bitwise or.
 		key_data[start] |= suffix.key.data()[start];

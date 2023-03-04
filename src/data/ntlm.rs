@@ -30,7 +30,9 @@ impl NTLM {
 	}
 
 	/// Hexadecimal representation
-	pub fn hex(&self) -> impl Deref<Target = str> + AsRef<str> + AsRef<[u8; 32]> + AsRef<[u8]> + std::fmt::Display {
+	pub fn hex(
+		&self,
+	) -> impl Deref<Target = str> + AsRef<str> + AsRef<[u8; 32]> + AsRef<[u8]> + std::fmt::Display {
 		let mut hex = NTLMHex([0u8; 32]);
 		#[allow(clippy::needless_borrow)]
 		// false positive - not needless: the borrowed expression implements the required traits
