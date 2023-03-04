@@ -10,6 +10,7 @@
 
 mod builder;
 mod depth;
+mod hashlist;
 mod key_suffix;
 mod prefix;
 mod reader;
@@ -22,6 +23,7 @@ use self::{depth::BucketIndexInner, prefix::BucketIndex};
 pub use self::{
 	builder::{Builder, TypedBuilder},
 	depth::Depth,
+	hashlist::{TypedListReader, TypedListWriter},
 	key_suffix::KeySuffix,
 	prefix::{Prefix, PrefixRange},
 	reader::Index,

@@ -81,3 +81,34 @@ pub enum TableReadError {
 	#[error("Table offsets not increasing")]
 	InvalidTableOffsets,
 }
+
+/// Error when opening hash list
+#[derive(thiserror::Error, Debug)]
+pub enum HashListCreateError {
+	/// IO read error
+	#[error("IO error: {0}")]
+	IOError(#[from] std::io::Error),
+	/// Invalid description
+	#[error("Invalid description")]
+	InvalidDescription,
+}
+
+/// Error when opening hash list
+#[derive(thiserror::Error, Debug)]
+pub enum HashListOpenError {
+	/// IO read error
+	#[error("IO error: {0}")]
+	IOError(#[from] std::io::Error),
+	/// Invalid mtime timestamp
+	#[error("timestamp out of range")]
+	InvalidMtime,
+	/// Invalid key type
+	#[error("key-type error: {0}")]
+	KeyTypeError(#[from] KeyTypeParseError),
+	/// Invalid key length
+	#[error("invalid key length")]
+	InvalidKeyLength,
+	/// Invalid header
+	#[error("invalid/unknown header format")]
+	InvalidHeader,
+}

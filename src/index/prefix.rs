@@ -1,3 +1,5 @@
+use crate::data::KeyData;
+
 use super::{BucketIndexInner, Depth};
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
@@ -71,6 +73,43 @@ impl Prefix {
 			key[full_prefix_bytes] =
 				(key[full_prefix_bytes] & mask_bits) | (self.raw[full_prefix_bytes] & !mask_bits);
 		}
+	}
+
+	/// Complete prefix to key from hex encoded suffix
+	///
+	/// Ignores bits in first suffix nibble that are part of the prefix.
+	pub fn read_suffix_from_hex(
+		self,
+		hex_suffix: &[u8],
+		key_data: &mut [u8],
+	) -> Result<(), hex::FromHexError> {
+		assert!((self.depth.as_u8() as usize + 7) / 8 < key_data.len(), "prefix too long for key");
+		let suffix_start = (self.depth.as_u8() as usize) / 8;
+		if self.depth.as_u8() & 0x7 >= 4 {
+			// suffix starts with the low nibble of a byte
+			if hex_suffix.is_empty() {
+				return Err(hex::FromHexError::InvalidStringLength);
+			}
+			let padded_nibble = [0, hex_suffix[0]];
+			hex::decode_to_slice(&padded_nibble[..], &mut key_data[suffix_start..][..1])?;
+			hex::decode_to_slice(&hex_suffix[1..], &mut key_data[suffix_start + 1..])?;
+		} else {
+			hex::decode_to_slice(hex_suffix, &mut key_data[suffix_start..])?;
+		}
+		self.set_key_prefix(key_data);
+		Ok(())
+	}
+
+	/// Complete prefix to key from hex encoded suffix
+	///
+	/// Ignores bits in first suffix nibble that are part of the prefix.
+	pub fn read_key_from_suffix_hex<D>(self, hex_suffix: &[u8]) -> Result<D, hex::FromHexError>
+	where
+		D: KeyData,
+	{
+		let mut key = D::default();
+		self.read_suffix_from_hex(hex_suffix, key.data_mut())?;
+		Ok(key)
 	}
 }
 
