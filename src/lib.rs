@@ -3,7 +3,7 @@
 //!
 //! Lots of code to build (indexed) lists of password hashes for quick lookup.
 //!
-//! Tries to use data from https://haveibeenpwned.com/ and might offer similar APIs one day.
+//! Tries to use data from <https://haveibeenpwned.com/> and might offer similar APIs one day.
 
 pub mod buf_read;
 pub mod data;
