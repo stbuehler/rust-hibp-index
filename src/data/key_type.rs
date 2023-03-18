@@ -28,13 +28,13 @@ impl KnownKeyType {
 		}
 	}
 
-	/// Name of key type (used for serialization)
+	/// Name of key type (used for serialization and directory names)
 	///
 	/// Each character of a name is `u8::is_ascii_graphic` - i.e. name is an ASCII string.
 	pub fn name(self) -> &'static str {
 		match self {
-			Self::SHA1 => "SHA-1",
-			Self::NT => "NT",
+			Self::SHA1 => "sha1",
+			Self::NT => "nt",
 		}
 	}
 }
@@ -82,8 +82,8 @@ impl KeyType {
 
 	fn from_known(input: &str) -> Option<KnownKeyType> {
 		match input {
-			"SHA-1" => Some(Self::SHA1),
-			"NTLM" | "NT" => Some(Self::NT),
+			"SHA-1" | "sha1" => Some(Self::SHA1),
+			"NTLM" | "NT" | "nt" => Some(Self::NT),
 			_ => None,
 		}
 	}
