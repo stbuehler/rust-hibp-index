@@ -1,3 +1,5 @@
+use crate::data::{KeyData, Prefix};
+
 use super::{BucketIndex, LimPrefix, LimPrefixRange};
 
 /// The depth of a index determines how long the prefix is long (in bits)
@@ -90,7 +92,12 @@ impl Depth {
 	}
 
 	/// Extract prefix range from key prefix to look for
-	pub fn prefix_range(self, key: &[u8], key_bits: u32) -> LimPrefixRange {
+	pub fn prefix_range<K: KeyData>(self, prefix: &Prefix<K>) -> LimPrefixRange {
+		LimPrefixRange::new(self, prefix.key().data(), prefix.bits())
+	}
+
+	/// Extract prefix range from key prefix to look for
+	pub fn prefix_range_raw(self, key: &[u8], key_bits: u32) -> LimPrefixRange {
 		LimPrefixRange::new(self, key, key_bits)
 	}
 }
