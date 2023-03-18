@@ -11,7 +11,7 @@ use crate::{
 use super::{
 	table::Table,
 	table_helper::{ForwardRangeSearch, ForwardSearch, ForwardSearchResult},
-	Prefix, PrefixRange,
+	LimPrefix, LimPrefixRange,
 };
 
 pub const INDEX_V0_MAGIC: &str = "hash-index-v0";
@@ -189,10 +189,10 @@ pub(super) struct IndexWalk<'r, 'key, R> {
 	index: &'r Index<R>,
 	database: BufReader<'r, R>,
 	forward_search: ForwardRangeSearch<'key>,
-	prefixes: PrefixRange,
+	prefixes: LimPrefixRange,
 	payload_buf: Vec<u8>,
 	entry_size: usize,
-	current_prefix_num_entries: Option<(Prefix, u64)>,
+	current_prefix_num_entries: Option<(LimPrefix, u64)>,
 }
 
 impl<'r, 'key, R> IndexWalk<'r, 'key, R>

@@ -2,7 +2,7 @@ use byteorder::{ReadBytesExt, WriteBytesExt, BE};
 use std::io::{self, Read, Write};
 use std::ops::Range;
 
-use super::{BucketIndex, Depth, Prefix, PrefixRange};
+use super::{BucketIndex, Depth, LimPrefix, LimPrefixRange};
 use crate::errors::TableReadError;
 
 pub(super) struct Table {
@@ -24,11 +24,11 @@ impl Table {
 		self.file_offsets[start.entry()]..self.file_offsets[start.entry() + 1]
 	}
 
-	pub(super) fn prefix_range(&self, key: &[u8], key_bits: u32) -> PrefixRange {
-		self.depth.prefix_range(key, key_bits)
+	pub(super) fn prefix_range(&self, key: &[u8], key_bits: u32) -> LimPrefixRange {
+		self.depth.prefix_range_raw(key, key_bits)
 	}
 
-	pub(super) fn lookup_prefix(&self, prefix: Prefix) -> Range<u64> {
+	pub(super) fn lookup_prefix(&self, prefix: LimPrefix) -> Range<u64> {
 		assert_eq!(prefix.depth(), self.depth);
 		let start = prefix.index();
 		self.file_offsets[start.entry()]..self.file_offsets[start.entry() + 1]

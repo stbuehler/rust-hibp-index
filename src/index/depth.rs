@@ -1,4 +1,4 @@
-use super::{BucketIndex, Prefix, PrefixRange};
+use super::{BucketIndex, LimPrefix, LimPrefixRange};
 
 /// The depth of a index determines how long the prefix is long (in bits)
 ///
@@ -77,8 +77,8 @@ impl Depth {
 	}
 
 	/// Extract prefix from a key
-	pub fn prefix(self, key: &[u8]) -> Prefix {
-		Prefix::new(self, key)
+	pub fn prefix(self, key: &[u8]) -> LimPrefix {
+		LimPrefix::new(self, key)
 	}
 
 	pub(super) fn index(self, key: &[u8]) -> BucketIndex {
@@ -90,7 +90,7 @@ impl Depth {
 	}
 
 	/// Extract prefix range from key prefix to look for
-	pub fn prefix_range(self, key: &[u8], key_bits: u32) -> PrefixRange {
-		PrefixRange::new(self, key, key_bits)
+	pub fn prefix_range(self, key: &[u8], key_bits: u32) -> LimPrefixRange {
+		LimPrefixRange::new(self, key, key_bits)
 	}
 }

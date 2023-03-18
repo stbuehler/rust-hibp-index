@@ -14,18 +14,18 @@ impl BucketIndex {
 const KEY_BYTES: usize = std::mem::size_of::<BucketIndexInner>();
 const KEY_BITS_U8: u8 = 8 * (KEY_BYTES as u8);
 
-/// Prefix of key (internal hardcoded maximum length [`Depth`])
+/// Prefix of key (limited internal hardcoded maximum length [`Depth`])
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Prefix {
+pub struct LimPrefix {
 	raw: [u8; KEY_BYTES],
 	depth: Depth,
 }
 
-impl Prefix {
+impl LimPrefix {
 	pub(super) fn new(depth: Depth, key: &[u8]) -> Self {
 		let mut raw = [0u8; KEY_BYTES];
 		if depth.as_u8() == 0 {
-			return Prefix { raw, depth };
+			return Self { raw, depth };
 		}
 		let mask: BucketIndexInner = (!0) << (KEY_BITS_U8 - depth.as_u8()); // zero depth would overflow shift
 		let raw_len = std::cmp::min(key.len(), raw.len());
@@ -34,7 +34,7 @@ impl Prefix {
 		raw[..raw_len].copy_from_slice(&key[..raw_len]);
 		// truncate
 		let raw = (BucketIndexInner::from_be_bytes(raw) & mask).to_be_bytes();
-		Prefix { raw, depth }
+		Self { raw, depth }
 	}
 
 	/// Length of prefix
@@ -113,7 +113,7 @@ impl Prefix {
 	}
 }
 
-impl std::fmt::Debug for Prefix {
+impl std::fmt::Debug for LimPrefix {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		write!(f, "{}/{}", self.as_hex(), self.depth.as_u8())
 	}
@@ -150,10 +150,10 @@ impl std::fmt::Display for PrefixHex {
 	}
 }
 
-/// When looking for keys with a certain prefix, we might need
+/// When looking for keys with a certain (limited) prefix, we might need
 /// to iterate over multiple prefixes in the table
 #[derive(Clone, Copy, Debug)]
-pub struct PrefixRange {
+pub struct LimPrefixRange {
 	// although we use BucketIndexInner as type here, it uses the
 	// **unshifted** value, which is why we need to increment by step
 	// instead of (constant) 1.
@@ -163,16 +163,16 @@ pub struct PrefixRange {
 	depth: Depth,
 }
 
-impl PrefixRange {
-	pub(super) fn new(depth: Depth, key: &[u8], key_bits: u32) -> PrefixRange {
+impl LimPrefixRange {
+	pub(super) fn new(depth: Depth, key: &[u8], key_bits: u32) -> Self {
 		if depth.as_u8() == 0 {
 			// step could also be "0" - really doesn't matter.
-			return PrefixRange { first: Some(0), last: 0, step: 1, depth };
+			return Self { first: Some(0), last: 0, step: 1, depth };
 		}
 		let mask: BucketIndexInner = (!0) << (KEY_BITS_U8 - depth.as_u8()); // zero depth would overflow shift
 		let step: BucketIndexInner = 1 << (KEY_BITS_U8 - depth.as_u8());
 		if key_bits == 0 {
-			return PrefixRange { first: Some(0), last: mask, step, depth };
+			return Self { first: Some(0), last: mask, step, depth };
 		}
 		let mut raw = [0u8; KEY_BYTES];
 		let raw_len = std::cmp::min(key.len(), raw.len());
@@ -189,22 +189,22 @@ impl PrefixRange {
 			// set the bits in the prefix that are allowed to be used but are not part
 			// of the key prefix to get the last prefix covered by the key
 			let last = ndx | (mask & !key_mask);
-			PrefixRange { first: Some(ndx), last, step, depth }
+			LimPrefixRange { first: Some(ndx), last, step, depth }
 		} else {
-			PrefixRange { first: Some(ndx), last: ndx, step, depth }
+			LimPrefixRange { first: Some(ndx), last: ndx, step, depth }
 		}
 	}
 }
 
-impl Iterator for PrefixRange {
-	type Item = Prefix;
+impl Iterator for LimPrefixRange {
+	type Item = LimPrefix;
 
 	fn next(&mut self) -> Option<Self::Item> {
 		let current = self.first?;
 		if current <= self.last {
 			// automatically stop on overflow
 			self.first = current.checked_add(self.step);
-			Some(Prefix { raw: current.to_be_bytes(), depth: self.depth })
+			Some(LimPrefix { raw: current.to_be_bytes(), depth: self.depth })
 		} else {
 			None
 		}
@@ -216,7 +216,7 @@ impl Iterator for PrefixRange {
 	}
 }
 
-impl DoubleEndedIterator for PrefixRange {
+impl DoubleEndedIterator for LimPrefixRange {
 	fn next_back(&mut self) -> Option<Self::Item> {
 		let first = self.first?;
 		if first <= self.last {
@@ -229,14 +229,14 @@ impl DoubleEndedIterator for PrefixRange {
 					self.last = last;
 				},
 			}
-			Some(Prefix { raw: current.to_be_bytes(), depth: self.depth })
+			Some(LimPrefix { raw: current.to_be_bytes(), depth: self.depth })
 		} else {
 			None
 		}
 	}
 }
 
-impl ExactSizeIterator for PrefixRange {
+impl ExactSizeIterator for LimPrefixRange {
 	fn len(&self) -> usize {
 		if let Some(first) = self.first {
 			1 + ((self.last - first) / self.step) as usize

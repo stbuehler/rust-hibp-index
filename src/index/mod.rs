@@ -25,7 +25,7 @@ pub use self::{
 	depth::Depth,
 	hashlist::{TypedListReader, TypedListWriter},
 	key_suffix::KeySuffix,
-	prefix::{Prefix, PrefixRange},
+	prefix::{LimPrefix, LimPrefixRange},
 	reader::Index,
 	typed_reader::TypedIndex,
 };
