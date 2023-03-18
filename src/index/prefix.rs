@@ -90,7 +90,7 @@ impl Prefix {
 			if hex_suffix.is_empty() {
 				return Err(hex::FromHexError::InvalidStringLength);
 			}
-			let padded_nibble = [0, hex_suffix[0]];
+			let padded_nibble = [b'0', hex_suffix[0]];
 			hex::decode_to_slice(&padded_nibble[..], &mut key_data[suffix_start..][..1])?;
 			hex::decode_to_slice(&hex_suffix[1..], &mut key_data[suffix_start + 1..])?;
 		} else {
