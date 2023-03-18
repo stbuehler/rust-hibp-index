@@ -4,7 +4,10 @@ use crate::{
 };
 use byteorder::{ReadBytesExt, WriteBytesExt};
 use chrono::TimeZone;
-use std::io::{BufRead, ErrorKind};
+use std::{
+	cmp::Ordering,
+	io::{BufRead, ErrorKind},
+};
 
 const HASH_LIST_V0_MAGIC: &str = "hash-list-v0";
 const HASH_LIST_V0_HEADER_LIMIT: u64 = 4096;
@@ -152,6 +155,19 @@ where
 		let mut payload = P::default();
 		payload.data_mut().copy_from_slice(&self.payload_buf[..P::SIZE]);
 		Some(Ok((key, payload)))
+	}
+
+	/// Search key in list
+	pub fn lookup(&mut self, key: &K) -> std::io::Result<Option<P>> {
+		while let Some(entry) = self.next_entry() {
+			let (entry_key, payload) = entry?;
+			match entry_key.data().cmp(key.data()) {
+				Ordering::Less => (),
+				Ordering::Equal => return Ok(Some(payload)),
+				Ordering::Greater => return Ok(None),
+			}
+		}
+		Ok(None)
 	}
 }
 
