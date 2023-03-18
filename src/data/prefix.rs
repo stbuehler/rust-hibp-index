@@ -1,3 +1,7 @@
+use std::cmp::Ordering;
+
+use hex::FromHexError;
+
 use super::KeyData;
 
 /// Prefix of key data bitstring
@@ -15,6 +19,22 @@ where
 	pub fn new_from_key(key: &D, bits: u32) -> Self {
 		assert!(bits as usize <= D::SIZE * 8);
 		Self::new_from_raw(key.data(), bits)
+	}
+
+	/// Construct prefix from hex digits
+	pub fn new_from_hex(hex_digits: &[u8], bits: u32) -> Result<Self, FromHexError> {
+		let need_nibbles = (bits as usize + 3) / 4;
+		let mut key = D::default();
+		let key_data = key.data_mut();
+		if hex_digits.len() != need_nibbles {
+			return Err(FromHexError::InvalidStringLength);
+		}
+		hex::decode_to_slice(&hex_digits[..need_nibbles & !1], &mut key_data[..need_nibbles / 2])?;
+		if 0 != need_nibbles & 1 {
+			let padded = [hex_digits[need_nibbles - 1], b'0'];
+			hex::decode_to_slice(&padded[..], &mut key_data[need_nibbles / 2..][..1])?;
+		}
+		Ok(Self::new_from_key(&key, bits))
 	}
 
 	/// Extract prefix of given length in bits from raw (potentially partial) key data
@@ -98,6 +118,22 @@ where
 		// combine the (potentially) overlapping byte with bitwise or.
 		key_data[start] |= suffix.key.data()[start];
 		key
+	}
+
+	/// Compare prefix with (prefix of) full key
+	pub fn compare_key(&self, key: &D) -> Ordering {
+		let full_octets = self.bits as usize / 8;
+		let key_data = key.data();
+		let self_data = self.key.data();
+		self_data[..full_octets].cmp(&key_data[..full_octets]).then_with(|| {
+			let need_bits = self.bits & 7;
+			if need_bits != 0 {
+				let mask_bits: u8 = !(0xff >> need_bits);
+				self_data[full_octets].cmp(&(key_data[full_octets] & mask_bits))
+			} else {
+				Ordering::Equal
+			}
+		})
 	}
 }
 
