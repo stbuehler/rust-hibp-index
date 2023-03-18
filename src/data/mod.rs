@@ -4,13 +4,13 @@ mod macros;
 
 mod hex;
 mod key_type;
-mod ntlm;
+mod nt;
 mod prefix;
 mod sha1;
 
 pub use self::{
 	key_type::{KeyType, KnownKeyType},
-	ntlm::NTLM,
+	nt::NT,
 	prefix::{Prefix, Suffix},
 	sha1::SHA1,
 };

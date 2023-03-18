@@ -12,19 +12,19 @@ pub enum KnownKeyType {
 	/// NT hash data
 	///
 	/// -> md4 hash of UTF16-LE encoded data
-	NTLM,
+	NT,
 }
 
 impl KnownKeyType {
 	// for deref to KeyType
 	const KT_SHA1: KeyType = KeyType(InnerKeyType::Known(KnownKeyType::SHA1));
-	const KT_NTLM: KeyType = KeyType(InnerKeyType::Known(KnownKeyType::NTLM));
+	const KT_NT: KeyType = KeyType(InnerKeyType::Known(KnownKeyType::NT));
 
 	/// Fixed length of key values with our type
 	pub fn key_bytes_length(self) -> u8 {
 		match self {
 			Self::SHA1 => 20,
-			Self::NTLM => 16,
+			Self::NT => 16,
 		}
 	}
 
@@ -34,7 +34,7 @@ impl KnownKeyType {
 	pub fn name(self) -> &'static str {
 		match self {
 			Self::SHA1 => "SHA-1",
-			Self::NTLM => "NTLM",
+			Self::NT => "NT",
 		}
 	}
 }
@@ -51,7 +51,7 @@ impl std::ops::Deref for KnownKeyType {
 	fn deref(&self) -> &Self::Target {
 		match self {
 			Self::SHA1 => &Self::KT_SHA1,
-			Self::NTLM => &Self::KT_NTLM,
+			Self::NT => &Self::KT_NT,
 		}
 	}
 }
@@ -78,12 +78,12 @@ impl KeyType {
 	/// SHA-1 key type
 	pub const SHA1: KnownKeyType = KnownKeyType::SHA1;
 	/// NT hash key type
-	pub const NTLM: KnownKeyType = KnownKeyType::NTLM;
+	pub const NT: KnownKeyType = KnownKeyType::NT;
 
 	fn from_known(input: &str) -> Option<KnownKeyType> {
 		match input {
 			"SHA-1" => Some(Self::SHA1),
-			"NTLM" => Some(Self::NTLM),
+			"NTLM" | "NT" => Some(Self::NT),
 			_ => None,
 		}
 	}

@@ -16,9 +16,9 @@ fn utf16le(data: &str) -> Vec<u8> {
 /// NT hashes are sometimes called NTLM hashes (not by Microsoft though).
 /// The NT hash is the MD4-checksum of the UTF-16LE encoded plaintext.
 #[derive(Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct NTLM(pub [u8; 16]);
+pub struct NT(pub [u8; 16]);
 
-impl NTLM {
+impl NT {
 	/// Calculate hash of plaintext
 	pub fn hash(password: &str) -> Self {
 		use md4::Digest;
@@ -33,7 +33,7 @@ impl NTLM {
 	pub fn hex(
 		&self,
 	) -> impl Deref<Target = str> + AsRef<str> + AsRef<[u8; 32]> + AsRef<[u8]> + std::fmt::Display {
-		let mut hex = NTLMHex([0u8; 32]);
+		let mut hex = NTHex([0u8; 32]);
 		#[allow(clippy::needless_borrow)]
 		// false positive - not needless: the borrowed expression implements the required traits
 		// still prefer to pass a reference to the array, not a copy of the array!
@@ -42,7 +42,7 @@ impl NTLM {
 	}
 }
 
-impl FromStr for NTLM {
+impl FromStr for NT {
 	type Err = hex::FromHexError;
 
 	fn from_str(hex: &str) -> Result<Self, Self::Err> {
@@ -52,7 +52,7 @@ impl FromStr for NTLM {
 	}
 }
 
-impl Deref for NTLM {
+impl Deref for NT {
 	type Target = [u8];
 
 	fn deref(&self) -> &Self::Target {
@@ -60,42 +60,42 @@ impl Deref for NTLM {
 	}
 }
 
-impl DerefMut for NTLM {
+impl DerefMut for NT {
 	fn deref_mut(&mut self) -> &mut Self::Target {
 		&mut self.0
 	}
 }
 
-impl AsRef<[u8; 16]> for NTLM {
+impl AsRef<[u8; 16]> for NT {
 	fn as_ref(&self) -> &[u8; 16] {
 		&self.0
 	}
 }
 
-impl AsMut<[u8; 16]> for NTLM {
+impl AsMut<[u8; 16]> for NT {
 	fn as_mut(&mut self) -> &mut [u8; 16] {
 		&mut self.0
 	}
 }
 
-impl fmt::Debug for NTLM {
+impl fmt::Debug for NT {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		f.write_str(&self.hex())
 	}
 }
 
-impl fmt::Display for NTLM {
+impl fmt::Display for NT {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		f.write_str(&self.hex())
 	}
 }
 
-impl crate::data::FixedByteArrayImpl for NTLM {
+impl crate::data::FixedByteArrayImpl for NT {
 	type ByteArray = [u8; 16];
 }
 
-impl crate::data::KeyData for NTLM {
-	const KEY_TYPE: crate::data::KnownKeyType = crate::data::KnownKeyType::NTLM;
+impl crate::data::KeyData for NT {
+	const KEY_TYPE: crate::data::KnownKeyType = crate::data::KnownKeyType::NT;
 }
 
-build_hex_wrapper!(NTLMHex[32]);
+build_hex_wrapper!(NTHex[32]);

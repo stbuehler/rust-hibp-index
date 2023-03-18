@@ -1,6 +1,6 @@
 extern crate hibp_index;
 
-use hibp_index::data::{NoPayload, NTLM};
+use hibp_index::data::{NoPayload, NT};
 use hibp_index::index::{Depth, TypedBuilder};
 
 use std::fs;
@@ -12,7 +12,7 @@ fn main() -> anyhow::Result<()> {
 		fs::OpenOptions::new().write(true).create_new(true).open("hibp-ntlm.index")?,
 	);
 	let mut builder =
-		TypedBuilder::<NTLM, NoPayload, _>::create(output, "pwned-passwords v7", Depth::DEPTH20)?;
+		TypedBuilder::<NT, NoPayload, _>::create(output, "pwned-passwords v7", Depth::DEPTH20)?;
 	for line in input.lines() {
 		builder.add_entry_from_hibp_line(&line?)?;
 	}

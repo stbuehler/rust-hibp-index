@@ -50,9 +50,9 @@ Start the lookup process:
 
     cargo run --release --bin hibp-lookup
 
-And then enter passwords or SHA1/NTLM-hashes on stdin (you could also send input via pipe); it will then tell you whether the hash is contained in the database or not.
+And then enter passwords or SHA1/NT-hashes on stdin (you could also send input via pipe); it will then tell you whether the hash is contained in the database or not.
 
-If you enter a password it will prefer doing SHA1 lookups; if only `hibp-ntlm.index` is present it will use NTLM hashes for the lookup.
+If you enter a password it will prefer doing SHA1 lookups; if only `hibp-ntlm.index` is present it will use NT hashes for the lookup.
 
 ## How it works
 
@@ -79,7 +79,7 @@ If the database grows a lot more the index size can be increased to 24 bits (the
 The file starts with a short header:
 
 - UTF-8 line: `hash-index-v0`
-- UTF-8 line: the content key type (i.e. type of indexed data). `SHA-1` or `NTLM` for this application.
+- UTF-8 line: the content key type (i.e. type of indexed data). `SHA-1` or `NT` for this application.
 - UTF-8 line: free-form description of the data / data source
 - all of the above lines are terminated by the (first) `\n`
 - key size in bytes (as single byte); must not be zero
