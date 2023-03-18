@@ -43,7 +43,7 @@ impl LimPrefix {
 	}
 
 	/// Show (significant) nibbles of prefix
-	pub fn as_hex(
+	pub fn hex(
 		&self,
 	) -> impl std::ops::Deref<Target = str> + std::fmt::Debug + std::fmt::Display {
 		let mut storage = [0u8; 2 * KEY_BYTES];
@@ -115,7 +115,7 @@ impl LimPrefix {
 
 impl std::fmt::Debug for LimPrefix {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		write!(f, "{}/{}", self.as_hex(), self.depth.as_u8())
+		write!(f, "{}/{}", self.hex(), self.depth.as_u8())
 	}
 }
 
