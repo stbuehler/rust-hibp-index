@@ -118,8 +118,8 @@ where
 {
 	/// Add entry from HIBP file line
 	///
-	/// <https://haveibeenpwned.com/API/v3#PwnedPasswords>
-	/// > The downloadable source data delimits the hash and the password count with a colon (:) and each line with a CRLF.
+	/// Each line contains the hash and the password count delimited by a colon (`:`).
+	///
 	/// we ignore the password count (empty payload to builder)
 	pub fn add_entry_from_hibp_line(&mut self, line: &str) -> anyhow::Result<()> {
 		if let Some(colon) = line.find(':') {
