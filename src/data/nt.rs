@@ -3,6 +3,8 @@ use std::fmt;
 use std::ops::{Deref, DerefMut};
 use std::str::FromStr;
 
+use super::FixedByteArray;
+
 fn utf16le(data: &str) -> Vec<u8> {
 	let mut result = Vec::new();
 	for c in data.encode_utf16() {
@@ -27,18 +29,6 @@ impl NT {
 		let mut this = Self([0u8; 16]);
 		this.0.copy_from_slice(&dig);
 		this
-	}
-
-	/// Hexadecimal representation
-	pub fn hex(
-		&self,
-	) -> impl Deref<Target = str> + AsRef<str> + AsRef<[u8; 32]> + AsRef<[u8]> + std::fmt::Display {
-		let mut hex = NTHex([0u8; 32]);
-		#[allow(clippy::needless_borrow)]
-		// false positive - not needless: the borrowed expression implements the required traits
-		// still prefer to pass a reference to the array, not a copy of the array!
-		hex::encode_to_slice(&self.0, &mut hex.0).unwrap();
-		hex
 	}
 }
 
@@ -92,10 +82,9 @@ impl fmt::Display for NT {
 
 impl crate::data::FixedByteArrayImpl for NT {
 	type ByteArray = [u8; 16];
+	type HexArray = [u8; 32];
 }
 
 impl crate::data::KeyData for NT {
 	const KEY_TYPE: crate::data::KnownKeyType = crate::data::KnownKeyType::NT;
 }
-
-build_hex_wrapper!(NTHex[32]);

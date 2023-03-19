@@ -2,6 +2,8 @@ use std::fmt;
 use std::ops::{Deref, DerefMut};
 use std::str::FromStr;
 
+use super::FixedByteArray;
+
 /// SHA-1 hash data
 #[derive(Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct SHA1(pub [u8; 20]);
@@ -14,18 +16,6 @@ impl SHA1 {
 		let mut this = Self([0u8; 20]);
 		this.0.copy_from_slice(&dig);
 		this
-	}
-
-	/// Hexadecimal representation
-	pub fn hex(
-		&self,
-	) -> impl Deref<Target = str> + AsRef<str> + AsRef<[u8; 40]> + AsRef<[u8]> + std::fmt::Display {
-		let mut hex = SHA1Hex([0u8; 40]);
-		#[allow(clippy::needless_borrow)]
-		// false positive - not needless: the borrowed expression implements the required traits
-		// still prefer to pass a reference to the array, not a copy of the array!
-		hex::encode_to_slice(&self.0, &mut hex.0).unwrap();
-		hex
 	}
 }
 
@@ -79,10 +69,9 @@ impl fmt::Display for SHA1 {
 
 impl crate::data::FixedByteArrayImpl for SHA1 {
 	type ByteArray = [u8; 20];
+	type HexArray = [u8; 40];
 }
 
 impl crate::data::KeyData for SHA1 {
 	const KEY_TYPE: crate::data::KnownKeyType = crate::data::KnownKeyType::SHA1;
 }
-
-build_hex_wrapper!(SHA1Hex[40]);

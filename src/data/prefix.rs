@@ -2,7 +2,7 @@ use std::cmp::Ordering;
 
 use hex::FromHexError;
 
-use super::KeyData;
+use super::{HexRange, KeyData};
 
 /// Prefix of key data bitstring
 #[derive(Clone)]
@@ -67,7 +67,7 @@ where
 	}
 
 	/// Show hex digits of prefix
-	pub fn hex(&self) -> impl '_ + std::fmt::Display {
+	pub fn hex(&self) -> HexRange<D::HexArray> {
 		self.key.hex_bit_range(0, self.bits)
 	}
 
@@ -191,7 +191,7 @@ where
 	}
 
 	/// Show hex digits of suffix
-	pub fn hex(&self) -> impl '_ + std::fmt::Display {
+	pub fn hex(&self) -> HexRange<D::HexArray> {
 		self.key.hex_bit_range(self.prefix_bits, D::SIZE as u32 * 8)
 	}
 }

@@ -1,7 +1,4 @@
 //! Various types representing "data" (keys, payload, related)
-#[macro_use]
-mod macros;
-
 mod hex;
 mod key_type;
 mod nt;
@@ -9,6 +6,7 @@ mod prefix;
 mod sha1;
 
 pub use self::{
+	hex::{Hex, HexRange},
 	key_type::{KeyType, KnownKeyType},
 	nt::NT,
 	prefix::{Prefix, Suffix},
@@ -24,10 +22,16 @@ pub use self::{
 mod seal_trait {
 	pub trait U8Array: AsRef<[u8]> + AsMut<[u8]> {
 		const SIZE: usize;
+
+		fn zeroed() -> Self;
 	}
 
 	impl<const N: usize> U8Array for [u8; N] {
 		const SIZE: usize = N;
+
+		fn zeroed() -> Self {
+			[0u8; N]
+		}
 	}
 }
 
@@ -40,6 +44,9 @@ pub trait FixedByteArrayImpl:
 {
 	/// underlying [u8; N] type
 	type ByteArray: seal_trait::U8Array;
+
+	/// underlying [u8; 2 * N] type
+	type HexArray: seal_trait::U8Array;
 }
 
 /// Types that wrap a byte array of fixed length
@@ -62,18 +69,18 @@ pub trait FixedByteArray: FixedByteArrayImpl {
 	}
 
 	/// Returns an `impl std::fmt::Display` showing the hex digits of the data
-	fn hex(&self) -> hex::DisplayHex<'_> {
-		hex::DisplayHex::new(self.data(), 0, Self::SIZE as u32 * 8)
+	fn hex(&self) -> hex::Hex<Self::HexArray> {
+		hex::Hex::new(self)
 	}
 
 	/// Returns an `impl std::fmt::Display` showing the hex digits of the data in the given bit range
 	///
 	/// Shows all hex digits that contain at least one bit to be shown (but doesn't mask the other bits;
 	/// that might change though).
-	fn hex_bit_range(&self, start: u32, end: u32) -> hex::DisplayHex<'_> {
+	fn hex_bit_range(&self, start: u32, end: u32) -> hex::HexRange<Self::HexArray> {
 		assert!(start <= end);
 		assert!(end <= Self::SIZE as u32 * 8);
-		hex::DisplayHex::new(self.data(), start, end)
+		hex::HexRange::new(self, start, end)
 	}
 }
 
@@ -125,6 +132,7 @@ impl AsMut<[u8; 0]> for NoPayload {
 
 impl FixedByteArrayImpl for NoPayload {
 	type ByteArray = [u8; 0];
+	type HexArray = [u8; 0];
 }
 
 impl PayloadData for NoPayload {}

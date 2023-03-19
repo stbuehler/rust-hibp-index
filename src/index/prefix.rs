@@ -1,4 +1,4 @@
-use crate::data::KeyData;
+use crate::data::{FixedByteArray, HexRange, KeyData};
 
 use super::{BucketIndexInner, Depth};
 
@@ -14,26 +14,46 @@ impl BucketIndex {
 const KEY_BYTES: usize = std::mem::size_of::<BucketIndexInner>();
 const KEY_BITS_U8: u8 = 8 * (KEY_BYTES as u8);
 
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
+struct LimPrefixBytes([u8; KEY_BYTES]);
+
+impl AsRef<[u8; KEY_BYTES]> for LimPrefixBytes {
+	fn as_ref(&self) -> &[u8; KEY_BYTES] {
+		&self.0
+	}
+}
+
+impl AsMut<[u8; KEY_BYTES]> for LimPrefixBytes {
+	fn as_mut(&mut self) -> &mut [u8; KEY_BYTES] {
+		&mut self.0
+	}
+}
+
+impl crate::data::FixedByteArrayImpl for LimPrefixBytes {
+	type ByteArray = [u8; KEY_BYTES];
+	type HexArray = [u8; 2 * KEY_BYTES];
+}
+
 /// Prefix of key (limited internal hardcoded maximum length [`Depth`])
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct LimPrefix {
-	raw: [u8; KEY_BYTES],
+	raw: LimPrefixBytes,
 	depth: Depth,
 }
 
 impl LimPrefix {
 	pub(super) fn new(depth: Depth, key: &[u8]) -> Self {
-		let mut raw = [0u8; KEY_BYTES];
+		let mut raw = LimPrefixBytes([0u8; KEY_BYTES]);
 		if depth.as_u8() == 0 {
 			return Self { raw, depth };
 		}
 		let mask: BucketIndexInner = (!0) << (KEY_BITS_U8 - depth.as_u8()); // zero depth would overflow shift
-		let raw_len = std::cmp::min(key.len(), raw.len());
+		let raw_len = std::cmp::min(key.len(), raw.0.len());
 		// copy data
 		// don't care if key was too short for depth... it just gets zero-padded.
-		raw[..raw_len].copy_from_slice(&key[..raw_len]);
+		raw.0[..raw_len].copy_from_slice(&key[..raw_len]);
 		// truncate
-		let raw = (BucketIndexInner::from_be_bytes(raw) & mask).to_be_bytes();
+		let raw = LimPrefixBytes((BucketIndexInner::from_be_bytes(raw.0) & mask).to_be_bytes());
 		Self { raw, depth }
 	}
 
@@ -43,20 +63,15 @@ impl LimPrefix {
 	}
 
 	/// Show (significant) nibbles of prefix
-	pub fn hex(
-		&self,
-	) -> impl std::ops::Deref<Target = str> + std::fmt::Debug + std::fmt::Display {
-		let mut storage = [0u8; 2 * KEY_BYTES];
-		hex::encode_to_slice(self.raw, &mut storage).unwrap();
-		let len = (self.depth.as_u8() as usize + 3) / 4;
-		PrefixHex { storage, len }
+	pub fn hex(&self) -> HexRange<[u8; KEY_BYTES * 2]> {
+		self.raw.hex_bit_range(0, self.depth.as_u8() as u32)
 	}
 
 	pub(super) fn index(self) -> BucketIndex {
 		if self.depth.as_u8() == 0 {
 			return BucketIndex(0);
 		}
-		BucketIndex(BucketIndexInner::from_be_bytes(self.raw) >> (32 - self.depth.as_u8()))
+		BucketIndex(BucketIndexInner::from_be_bytes(self.raw.0) >> (32 - self.depth.as_u8()))
 	}
 
 	/// Set prefix bits in key to this prefix
@@ -66,12 +81,12 @@ impl LimPrefix {
 	/// Panics if key is too short to contain prefix.
 	pub fn set_key_prefix(self, key: &mut [u8]) {
 		let full_prefix_bytes = (self.depth.as_u8() / 8) as usize;
-		key[..full_prefix_bytes].copy_from_slice(&self.raw[..full_prefix_bytes]);
+		key[..full_prefix_bytes].copy_from_slice(&self.raw.0[..full_prefix_bytes]);
 		let partial_bits = self.depth.as_u8() & 0x7;
 		if partial_bits != 0 {
 			let mask_bits = 0xff >> partial_bits;
 			key[full_prefix_bytes] =
-				(key[full_prefix_bytes] & mask_bits) | (self.raw[full_prefix_bytes] & !mask_bits);
+				(key[full_prefix_bytes] & mask_bits) | (self.raw.0[full_prefix_bytes] & !mask_bits);
 		}
 	}
 
@@ -116,37 +131,6 @@ impl LimPrefix {
 impl std::fmt::Debug for LimPrefix {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		write!(f, "{}/{}", self.hex(), self.depth.as_u8())
-	}
-}
-
-struct PrefixHex {
-	storage: [u8; 2 * KEY_BYTES],
-	len: usize,
-}
-
-impl PrefixHex {
-	fn str(&self) -> &str {
-		std::str::from_utf8(&self.storage[..self.len]).unwrap()
-	}
-}
-
-impl std::ops::Deref for PrefixHex {
-	type Target = str;
-
-	fn deref(&self) -> &Self::Target {
-		self.str()
-	}
-}
-
-impl std::fmt::Debug for PrefixHex {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		write!(f, "{:?}", self.str())
-	}
-}
-
-impl std::fmt::Display for PrefixHex {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		f.write_str(self.str())
 	}
 }
 
@@ -204,7 +188,7 @@ impl Iterator for LimPrefixRange {
 		if current <= self.last {
 			// automatically stop on overflow
 			self.first = current.checked_add(self.step);
-			Some(LimPrefix { raw: current.to_be_bytes(), depth: self.depth })
+			Some(LimPrefix { raw: LimPrefixBytes(current.to_be_bytes()), depth: self.depth })
 		} else {
 			None
 		}
@@ -229,7 +213,7 @@ impl DoubleEndedIterator for LimPrefixRange {
 					self.last = last;
 				},
 			}
-			Some(LimPrefix { raw: current.to_be_bytes(), depth: self.depth })
+			Some(LimPrefix { raw: LimPrefixBytes(current.to_be_bytes()), depth: self.depth })
 		} else {
 			None
 		}
