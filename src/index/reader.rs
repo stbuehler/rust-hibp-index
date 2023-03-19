@@ -4,7 +4,7 @@ use std::io::{self, BufRead, Read, Seek};
 
 use crate::{
 	buf_read::{BufReader, FileLen, ReadAt},
-	data::KeyType,
+	data::{KeyData, KeyType, PayloadData},
 	errors::{IndexOpenError, LookupError},
 };
 
@@ -18,7 +18,7 @@ pub const INDEX_V0_MAGIC: &str = "hash-index-v0";
 pub const INDEX_V0_HEADER_LIMIT: u64 = 4096;
 
 /// Reader for indexed database
-pub(super) struct Index<R> {
+struct Index<R> {
 	key_type: KeyType,
 	description: String,
 	key_size: u8,
@@ -31,28 +31,8 @@ impl<R> Index<R>
 where
 	R: io::Read + io::Seek + ReadAt + FileLen,
 {
-	/// Key type of entries
-	pub fn key_type(&self) -> &KeyType {
-		&self.key_type
-	}
-
-	/// Description of database
-	pub fn description(&self) -> &str {
-		&self.description
-	}
-
-	/// Length (in bytes) of key data of each entry
-	pub fn key_size(&self) -> u8 {
-		self.key_size
-	}
-
-	/// Length (in bytes) of payload data of each entry
-	pub fn payload_size(&self) -> u8 {
-		self.payload_size
-	}
-
 	/// Open index from reader
-	pub fn open(mut database: R) -> Result<Self, IndexOpenError> {
+	fn open(mut database: R) -> Result<Self, IndexOpenError> {
 		let mut reader = io::BufReader::new(&mut database);
 		reader.rewind()?;
 		let mut header = reader.by_ref().take(INDEX_V0_HEADER_LIMIT);
@@ -85,7 +65,86 @@ where
 	}
 }
 
-pub(super) struct IndexLookup<'r, 'key, R> {
+/// Typed index reader
+///
+/// Uses generics to read index with specific key and payload data.
+pub struct TypedIndex<D, P, R> {
+	index: Index<R>,
+	_marker: std::marker::PhantomData<(D, P)>,
+}
+
+impl<D, P, R> TypedIndex<D, P, R>
+where
+	D: KeyData,
+	P: PayloadData,
+	R: io::Read + io::Seek + ReadAt + FileLen,
+{
+	/// Try use the passed index with the specified types
+	fn new(index: Index<R>) -> Result<Self, IndexOpenError> {
+		if index.key_type != *D::KEY_TYPE {
+			return Err(IndexOpenError::InvalidKeyLength);
+		}
+		if index.key_size != D::KEY_TYPE.key_bytes_length() {
+			return Err(IndexOpenError::InvalidKeyLength);
+		}
+		if (index.payload_size as usize) < P::SIZE {
+			// TODO: new enum?
+			return Err(IndexOpenError::InvalidKeyLength);
+		}
+		Ok(Self { index, _marker: std::marker::PhantomData })
+	}
+
+	/// Open an index database
+	pub fn open(database: R) -> Result<Self, IndexOpenError> {
+		Self::new(Index::open(database)?)
+	}
+
+	/// Description of database
+	pub fn description(&self) -> &str {
+		&self.index.description
+	}
+
+	/// Length (in bytes) of payload data of each entry
+	///
+	/// Might be larger than supplied PayloadData `P` type.
+	pub fn payload_size(&self) -> u8 {
+		self.index.payload_size
+	}
+
+	/// Lookup entry with given key in index
+	///
+	/// Return payload of entry if found.
+	pub fn lookup(&self, key: &D) -> Result<Option<P>, LookupError> {
+		let mut payload = P::default();
+		if IndexLookup::new(&self.index, key.data()).sync_lookup(payload.data_mut())?.is_none() {
+			return Ok(None);
+		}
+		Ok(Some(payload))
+	}
+
+	/// Loop over all entries with given key prefix.
+	///
+	/// Iterator returns key and payload for each entry.
+	pub fn lookup_range<'a>(
+		&'a self,
+		key: &'a [u8],
+		key_bits: u32,
+	) -> impl 'a + Iterator<Item = Result<(D, P), LookupError>> {
+		let mut walk = IndexWalk::new(&self.index, key, key_bits);
+		let mut key = D::default();
+		std::iter::from_fn(move || match walk.sync_walk(key.data_mut()) {
+			Ok(None) => None,
+			Ok(Some(full_payload)) => {
+				let mut payload = P::default();
+				payload.data_mut().copy_from_slice(&full_payload[..P::SIZE]);
+				Some(Ok((key.clone(), payload)))
+			},
+			Err(e) => Some(Err(e)),
+		})
+	}
+}
+
+struct IndexLookup<'r, 'key, R> {
 	database: BufReader<'r, R>,
 	entry_buf: Vec<u8>,
 	forward_search: ForwardSearch<'key>,
@@ -97,7 +156,7 @@ impl<'r, 'key, R> IndexLookup<'r, 'key, R>
 where
 	R: io::Read + io::Seek + ReadAt + FileLen,
 {
-	pub(super) fn new(index: &'r Index<R>, key: &'key [u8]) -> Self {
+	fn new(index: &'r Index<R>, key: &'key [u8]) -> Self {
 		assert_ne!(index.key_size, 0);
 		assert_eq!(key.len(), index.key_size as usize);
 		let mut database = BufReader::new(&index.database, 16);
@@ -155,7 +214,7 @@ where
 	}
 }
 
-pub(super) struct IndexWalk<'r, 'key, R> {
+struct IndexWalk<'r, 'key, R> {
 	index: &'r Index<R>,
 	database: BufReader<'r, R>,
 	forward_search: ForwardRangeSearch<'key>,
@@ -169,7 +228,7 @@ impl<'r, 'key, R> IndexWalk<'r, 'key, R>
 where
 	R: io::Read + io::Seek + ReadAt + FileLen,
 {
-	pub(super) fn new(index: &'r Index<R>, key: &'key [u8], key_bits: u32) -> Self {
+	fn new(index: &'r Index<R>, key: &'key [u8], key_bits: u32) -> Self {
 		assert_ne!(index.key_size, 0);
 
 		let database = BufReader::new(&index.database, 16);

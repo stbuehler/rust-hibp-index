@@ -16,7 +16,6 @@ mod prefix;
 mod reader;
 mod table;
 mod table_helper;
-mod typed_reader;
 
 use self::{depth::BucketIndexInner, prefix::BucketIndex};
 
@@ -26,5 +25,5 @@ pub use self::{
 	hashlist::{TypedListReader, TypedListWriter},
 	key_suffix::KeySuffix,
 	prefix::{LimPrefix, LimPrefixRange},
-	typed_reader::TypedIndex,
+	reader::TypedIndex,
 };
