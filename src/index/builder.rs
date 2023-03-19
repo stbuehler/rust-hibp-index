@@ -12,7 +12,7 @@ use byteorder::WriteBytesExt;
 use std::io;
 
 /// Build index in database file
-pub struct Builder<W> {
+struct Builder<W> {
 	key_bytes: u8,
 	payload_size: u8,
 	table: TableBuilder,

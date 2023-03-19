@@ -21,11 +21,10 @@ mod typed_reader;
 use self::{depth::BucketIndexInner, prefix::BucketIndex};
 
 pub use self::{
-	builder::{Builder, TypedBuilder},
+	builder::TypedBuilder,
 	depth::Depth,
 	hashlist::{TypedListReader, TypedListWriter},
 	key_suffix::KeySuffix,
 	prefix::{LimPrefix, LimPrefixRange},
-	reader::Index,
 	typed_reader::TypedIndex,
 };

@@ -6,10 +6,7 @@ use crate::{
 	errors::{IndexOpenError, LookupError},
 };
 
-use super::{
-	reader::{IndexLookup, IndexWalk},
-	Index,
-};
+use super::reader::{Index, IndexLookup, IndexWalk};
 
 /// Typed index reader
 ///
@@ -26,7 +23,7 @@ where
 	R: io::Read + io::Seek + ReadAt + FileLen,
 {
 	/// Try use the passed index with the specified types
-	pub fn new(index: Index<R>) -> Result<Self, IndexOpenError> {
+	fn new(index: Index<R>) -> Result<Self, IndexOpenError> {
 		if index.key_type() != &*D::KEY_TYPE {
 			return Err(IndexOpenError::InvalidKeyLength);
 		}

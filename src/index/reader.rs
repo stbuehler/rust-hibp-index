@@ -18,7 +18,7 @@ pub const INDEX_V0_MAGIC: &str = "hash-index-v0";
 pub const INDEX_V0_HEADER_LIMIT: u64 = 4096;
 
 /// Reader for indexed database
-pub struct Index<R> {
+pub(super) struct Index<R> {
 	key_type: KeyType,
 	description: String,
 	key_size: u8,
@@ -82,36 +82,6 @@ where
 		}
 		drop(reader);
 		Ok(Self { key_type, description, key_size, payload_size, table, database })
-	}
-
-	/// Lookup entry with given key in index
-	///
-	/// Write payload data to passed buffer, and return slice to written part.
-	/// (Truncates if index contains more payload data.)
-	pub fn lookup<'a>(
-		&self,
-		key: &[u8],
-		payload: &'a mut [u8],
-	) -> Result<Option<&'a mut [u8]>, LookupError> {
-		IndexLookup::new(self, key).sync_lookup(payload)
-	}
-
-	/// Loop over all entries with given key prefix.
-	///
-	/// Iterator only returns key (as `Vec<u8>`), not the payload.
-	pub fn lookup_range<'a>(
-		&'a self,
-		key: &'a [u8],
-		key_bits: u32,
-	) -> impl 'a + Iterator<Item = Result<Vec<u8>, LookupError>> {
-		let mut walk = IndexWalk::new(self, key, key_bits);
-		let mut key_buf = Vec::new();
-		key_buf.resize(self.key_size as usize, 0);
-		std::iter::from_fn(move || match walk.sync_walk(&mut key_buf) {
-			Ok(None) => None,
-			Ok(Some(_payload)) => Some(Ok(key_buf.clone())),
-			Err(e) => Some(Err(e)),
-		})
 	}
 }
 

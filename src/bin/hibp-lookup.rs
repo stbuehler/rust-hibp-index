@@ -1,7 +1,7 @@
 extern crate hibp_index;
 
 use hibp_index::data::{KeyData, NoPayload, NT, SHA1};
-use hibp_index::index::{Index, TypedIndex};
+use hibp_index::index::TypedIndex;
 
 use std::fs;
 use std::io::{self, BufRead};
@@ -92,24 +92,7 @@ fn open_index<D>(path: &Path) -> anyhow::Result<TypedIndex<D, NoPayload, fs::Fil
 where
 	D: KeyData,
 {
-	let index = Index::open(fs::File::open(path)?)?;
-	if index.key_type() != &*D::KEY_TYPE {
-		anyhow::bail!(
-			"{:?} uses invalid key type: {:?}, expected {:?}",
-			path,
-			index.key_type(),
-			D::KEY_TYPE
-		);
-	}
-	if index.key_size() != D::KEY_TYPE.key_bytes_length() {
-		anyhow::bail!(
-			"{:?} uses invalid key size: {:?}, expected {:?}",
-			path,
-			index.key_size(),
-			D::KEY_TYPE.key_bytes_length()
-		);
-	}
-	Ok(TypedIndex::<D, NoPayload, _>::new(index)?)
+	Ok(TypedIndex::<D, NoPayload, _>::open(fs::File::open(path)?)?)
 }
 
 fn check<D>(
