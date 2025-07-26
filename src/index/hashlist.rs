@@ -123,15 +123,14 @@ where
 		}
 		// header followed by prefix, then entries
 		let prefix_len = reader.read_u8()?;
-		let prefix_len_bytes = (prefix_len as usize + 7) / 8;
+		let prefix_len_bytes = (prefix_len as usize).div_ceil(8);
 		if prefix_len_bytes >= K::SIZE {
 			return Err(HashListOpenError::InvalidKeyLength);
 		}
 		let mut key = K::default();
 		reader.read_exact(&mut key.data_mut()[..prefix_len_bytes])?;
 		let prefix = key.prefix(prefix_len as u32);
-		let mut payload_buf = Vec::new();
-		payload_buf.resize(header.payload_size as usize, 0u8);
+		let payload_buf = vec![0; header.payload_size as usize];
 		Ok(Self { reader, header, prefix, payload_buf, _marker: std::marker::PhantomData })
 	}
 
@@ -202,7 +201,7 @@ where
 			mtime,
 		)?;
 		writer.write_u8(prefix.bits() as u8)?;
-		let prefix_byte_count = (prefix.bits() as usize + 7) / 8;
+		let prefix_byte_count = (prefix.bits() as usize).div_ceil(8);
 		writer.write_all(&prefix.key().data()[..prefix_byte_count])?;
 		Ok(Self { writer, prefix, _marker: std::marker::PhantomData })
 	}

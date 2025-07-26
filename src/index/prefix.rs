@@ -98,7 +98,7 @@ impl LimPrefix {
 		hex_suffix: &[u8],
 		key_data: &mut [u8],
 	) -> Result<(), hex::FromHexError> {
-		assert!((self.depth.as_u8() as usize + 7) / 8 < key_data.len(), "prefix too long for key");
+		assert!((self.depth.as_u8() as usize).div_ceil(8) < key_data.len(), "prefix too long for key");
 		let suffix_start = (self.depth.as_u8() as usize) / 8;
 		if self.depth.as_u8() & 0x7 >= 4 {
 			// suffix starts with the low nibble of a byte

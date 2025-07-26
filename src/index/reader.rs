@@ -164,8 +164,7 @@ where
 		let forward_search = ForwardSearch::new(index.table.depth(), key);
 
 		let entry_size = index.table.depth().entry_size(index.key_size, index.payload_size);
-		let mut entry_buf = Vec::new();
-		entry_buf.resize(entry_size, 0u8);
+		let entry_buf = vec![0; entry_size];
 
 		let std::ops::Range { start, end } = index.table.lookup(key);
 		database.seek_from_start(start);
@@ -236,8 +235,7 @@ where
 		let forward_search = ForwardRangeSearch::new(key, key_bits);
 		let prefixes = index.table.prefix_range(key, key_bits);
 
-		let mut payload_buf = Vec::new();
-		payload_buf.resize(index.payload_size as usize, 0u8);
+		let payload_buf = vec![0; index.payload_size as usize];
 
 		let entry_size = index.table.depth().entry_size(index.key_size, index.payload_size);
 

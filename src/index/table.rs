@@ -45,8 +45,7 @@ impl Table {
 		let depth = tbl_reader.read_u8()?;
 		let depth = Depth::new(depth).ok_or(TableReadError::InvalidDepth { depth })?;
 		let entries = depth.table_entries();
-		let mut file_offsets: Vec<u64> = Vec::new();
-		file_offsets.resize(entries, 0);
+		let mut file_offsets: Vec<u64> = vec![0; entries];
 		tbl_reader.read_u64_into::<BE>(&mut file_offsets)?;
 		if 1 == tbl_reader.read(&mut [0])? {
 			return Err(TableReadError::TooMuchTableData);

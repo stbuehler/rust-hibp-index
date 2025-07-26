@@ -18,7 +18,6 @@ pub use self::{
 /// Provide traits to handle those in a generic way.
 ///
 /// Keys also have a string type name that get serialized and deserialized.
-
 mod seal_trait {
 	pub trait U8Array: AsRef<[u8]> + AsMut<[u8]> {
 		const SIZE: usize;

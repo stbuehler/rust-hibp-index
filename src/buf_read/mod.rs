@@ -45,9 +45,7 @@ impl<'a, R: ReadAt> BufReader<'a, R> {
 		let page_offset = page << PAGE_SIZE_BITS;
 		let offset = (self.position - page_offset) as usize;
 		if self.cache.cache_get(&page).is_none() {
-			let mut buf = Vec::new();
-
-			buf.resize(PAGE_SIZE, 0);
+			let mut buf = vec![0; PAGE_SIZE];
 			let got = self.reader.read_at_till_eof(&mut buf, page_offset)?;
 			buf.truncate(got);
 
@@ -71,7 +69,7 @@ impl<R: ReadAt> io::Read for BufReader<'_, R> {
 fn checked_opt<T>(value: Option<T>, msg: &'static str) -> io::Result<T> {
 	match value {
 		Some(v) => Ok(v),
-		None => Err(io::Error::new(io::ErrorKind::Other, msg)),
+		None => Err(io::Error::other(msg)),
 	}
 }
 

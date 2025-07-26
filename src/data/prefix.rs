@@ -23,7 +23,7 @@ where
 
 	/// Construct prefix from hex digits
 	pub fn new_from_hex(hex_digits: &[u8], bits: u32) -> Result<Self, FromHexError> {
-		let need_nibbles = (bits as usize + 3) / 4;
+		let need_nibbles = (bits as usize).div_ceil(4);
 		let mut key = D::default();
 		let key_data = key.data_mut();
 		if hex_digits.len() != need_nibbles {
@@ -43,7 +43,7 @@ where
 	pub fn new_from_raw(raw: &[u8], bits: u32) -> Self {
 		assert!(bits as usize <= D::SIZE * 8);
 		assert!(bits as usize <= raw.len() * 8);
-		let octets = (bits as usize + 7) / 8;
+		let octets = (bits as usize).div_ceil(8);
 		let mut key = D::default();
 		let key_data = key.data_mut();
 		key_data[..octets].copy_from_slice(&raw[..octets]);

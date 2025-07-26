@@ -93,7 +93,7 @@ impl HexRange<()> {
 			len += 1;
 			s += 1;
 		}
-		let mut e = (end + 7) / 8;
+		let mut e = end.div_ceil(8);
 		let final_nibble = if (end & 0x7) > 0 && (end & 0x7) <= 4 {
 			// skip last 4 bits of final octet - i.e. last low nibble
 			e -= 1;
